@@ -1,0 +1,75 @@
+{
+  "name": "ai-dock",
+  "productName": "AI Dock",
+  "version": "0.1.0",
+  "description": "AI Dock —— 自动检索本机 AI 应用与 CLI agent，一键启动 / 一键终止的桌面启动器",
+  "main": "src/main/main.js",
+  "author": "AI Dock",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zikong0528/ai-dock"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.aidock.launcher",
+    "productName": "AI Dock",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      "resources/**/*"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AI Dock"
+    },
+    "portable": {
+      "artifactName": "AI-Dock-${version}-portable.exe"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "zikong0528",
+        "repo": "ai-dock"
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
+}

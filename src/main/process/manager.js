@@ -1,0 +1,313 @@
+'use strict';
+
+const path = require('path');
+const { spawn } = require('child_process');
+const { run, runPowerShellJson } = require('../util/exec');
+
+// 进程列表缓存，避免状态轮询频繁调用 WMI
+let procCache = null;
+let procCacheTime = 0;
+const CACHE_MS = 1500;
+
+// 共享宿主进程：终止 CLI 时绝不能误杀（否则会关掉用户所有终端窗口）
+const EXCLUDED_NAMES = new Set([
+  'windowsterminal.exe',
+  'wt.exe',
+  'openconsole.exe',
+  'conhost.exe',
+  'explorer.exe',
+]);
+
+/**
+ * 列出当前进程（pid / name / commandLine），结果缓存约 1.5s。
+ */
+async function listProcesses(force = false) {
+  const now = Date.now();
+  if (!force && procCache && now - procCacheTime < CACHE_MS) return procCache;
+
+  const script = `Get-CimInstance Win32_Process | Select-Object ProcessId, Name, CommandLine | ConvertTo-Json -Compress`;
+  const raw = await runPowerShellJson(script);
+  let arr = [];
+  if (Array.isArray(raw)) arr = raw;
+  else if (raw) arr = [raw];
+
+  if (arr.length) {
+    procCache = arr
+      .filter((p) => p && p.ProcessId)
+      .map((p) => ({
+        pid: p.ProcessId,
+        name: String(p.Name || '').toLowerCase(),
+        cmdline: normCmdline(p.CommandLine),
+      }));
+  } else {
+    // 降级：PowerShell 不可用时用 tasklist（只有名称+PID，CLI 命令行匹配将退化）
+    procCache = await tasklistProcesses();
+  }
+  procCacheTime = now;
+  return procCache;
+}
+
+/**
+ * tasklist 降级方案：仅提供镜像名与 PID（无命令行）。
+ */
+async function tasklistProcesses() {
+  let out = '';
+  try {
+    out = await run('tasklist', ['/FO', 'CSV', '/NH']);
+  } catch (e) {
+    return [];
+  }
+  const procs = [];
+  for (const line of out.split(/\r?\n/)) {
+    const m = line.match(/^"([^"]+)","(\d+)"/);
+    if (m) procs.push({ pid: parseInt(m[2], 10), name: m[1].toLowerCase(), cmdline: '' });
+  }
+  return procs;
+}
+
+function normPath(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/\//g, '\\')
+    .replace(/\\+$/, '');
+}
+
+/**
+ * 归一化进程命令行：小写、正斜杠转反斜杠、合并双反斜杠。
+ * （npm 的 .cmd shim 会把 %dp0% 末尾反斜杠与后续 \node_modules 拼成 \\，必须合并才能匹配）
+ */
+function normCmdline(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/\//g, '\\')
+    .replace(/\\\\+/g, '\\');
+}
+
+/**
+ * 根据条目类型生成进程匹配规则。
+ *  GUI：优先按镜像名（exe 文件名）；若只有目录则按命令行路径匹配。
+ *  CLI：有安装路径（npm 全局）按路径精确匹配；否则按命令 token 匹配。
+ */
+function matchSpecFor(entry) {
+  if (entry.launchType === 'gui' || entry.launchType === 'store') {
+    const p = normPath(entry.installPath);
+    if (p.endsWith('.exe')) {
+      return { kind: 'image', value: path.basename(p) };
+    }
+    if (p) {
+      return { kind: 'cmdline', value: p };
+    }
+    return { kind: 'image', value: path.basename(entry.installPath || '').toLowerCase() };
+  }
+  // CLI：同时匹配安装路径（精确）与命令 token（用于命中 cmd 包装进程，从而干净关掉终端标签页）
+  return {
+    kind: 'cli',
+    installPath: entry.installPath ? normPath(entry.installPath) : '',
+    command: (entry.command || '').toLowerCase(),
+  };
+}
+
+/**
+ * 命令 token 是否以「独立单词/路径片段」形式出现在命令行中。
+ *  长命令（>=4 字符）：允许路径边界（"claude-code\cli.js" 里的 claude）；
+ *  短命令（如 dsh，3 字符）：要求整词边界（空格/引号/首尾），避免误命中路径片段。
+ *  单字符命令（如 q）：不参与 token 匹配（只能靠安装路径精确匹配）。
+ */
+function cmdlineHasToken(cmdline, token) {
+  if (!token || token.length < 2) return false;
+  const idx = cmdline.indexOf(token);
+  if (idx < 0) return false;
+  const before = idx > 0 ? cmdline[idx - 1] : '';
+  const after = cmdline[idx + token.length] || '';
+  const isWordBoundary = (c) => c === '' || c === ' ' || c === '"' || c === "'" || c === '\t';
+  if (token.length >= 4) {
+    const isPathBoundary = (c) =>
+      c === '' || c === ' ' || c === '/' || c === '\\' || c === '"' || c === ':' || c === '-' || c === '=' || c === '.';
+    return isPathBoundary(before) && isPathBoundary(after);
+  }
+  return isWordBoundary(before) && isWordBoundary(after);
+}
+
+function matchPids(spec, procs) {
+  const hits = [];
+  for (const p of procs) {
+    // 跳过共享宿主进程，避免误关用户所有终端窗口
+    if (EXCLUDED_NAMES.has(p.name)) continue;
+
+    if (spec.kind === 'image') {
+      if (p.name === spec.value || p.name === spec.value.replace(/\.exe$/, '') || p.name + '.exe' === spec.value) {
+        hits.push(p.pid);
+      }
+    } else if (spec.kind === 'cmdline') {
+      if (p.cmdline && p.cmdline.includes(spec.value)) hits.push(p.pid);
+    } else if (spec.kind === 'cli') {
+      const c = p.cmdline || '';
+      const hitPath = spec.installPath && c.includes(spec.installPath);
+      const hitCmd = cmdlineHasToken(c, spec.command);
+      if (hitPath || hitCmd) hits.push(p.pid);
+    }
+  }
+  return hits;
+}
+
+function spawnDetached(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false,
+      ...options,
+    });
+    child.once('error', reject);
+    child.once('spawn', () => {
+      child.removeListener('error', reject);
+      try {
+        child.unref();
+      } catch (e) {
+        /* ignore */
+      }
+      resolve(child);
+    });
+  });
+}
+
+function quoteCmdArg(a) {
+  const s = String(a);
+  if (/[\s"&|<>^]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function buildCmdLine(command, args) {
+  return [command, ...(args || [])].map(quoteCmdArg).join(' ');
+}
+
+/**
+ * 一键启动。
+ *  GUI：直接启动 exe（可带参数与工作目录）。
+ *  CLI：用 Windows Terminal（wt）打开终端交互运行，失败则退回经典 cmd 窗口。
+ */
+async function launch(entry) {
+  if (entry.launchType === 'cli') {
+    return launchCli(entry);
+  }
+  if (entry.launchType === 'store') {
+    return launchStore(entry);
+  }
+  const exe = entry.installPath;
+  if (!exe) throw new Error('该条目缺少启动路径');
+  const cwd = entry.workdir || undefined;
+  const child = await spawnDetached(exe, entry.args || [], { cwd });
+  return { pid: child.pid, cmdline: null, kind: 'gui' };
+}
+
+function hms(d) {
+  const p = (n) => String(n).padStart(2, '0');
+  return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+
+async function launchCli(entry) {
+  // 优先用解析出的完整路径（PATH 上找不到时仍可启动），其次用命令名
+  const base = buildCmdLine(entry.commandPath || entry.command || entry.name, entry.args || []);
+  // 实例隐形标记：rem 是 cmd 注释，用户无感知，用于多开时按实例精确识别/终止
+  const marker = 'aidock-i-' + Math.random().toString(36).slice(2, 10);
+  const cmdline = base + ' & rem ' + marker;
+
+  // 窗口标题带上启动时间：与列表里实例条目的「启动于 HH:MM:SS」一致，方便对号入座
+  const startedAt = new Date();
+  const title = 'AI Dock - ' + String(entry.name || '').replace(/["&|<>^]/g, '') + ' · ' + hms(startedAt);
+  const startArgs = ['/c', 'start', title];
+  if (entry.workdir) startArgs.push('/D', entry.workdir);
+  startArgs.push('cmd', '/k', cmdline);
+
+  const child = await spawnDetached('cmd.exe', startArgs, {});
+  return { pid: child.pid, cmdline, marker, kind: 'cli', startedAt: startedAt.toISOString() };
+}
+
+/**
+ * 启动 Windows 商店应用：通过 shell:AppsFolder + AppUserModelId。
+ */
+async function launchStore(entry) {
+  if (!entry.appId) throw new Error('缺少商店应用标识');
+  const child = await spawnDetached('explorer.exe', ['shell:AppsFolder\\' + entry.appId], {});
+  return { pid: child.pid, cmdline: null, kind: 'store' };
+}
+
+/**
+ * 一键终止：按匹配规则找到进程并结束整棵进程树。
+ */
+async function terminate(entry) {
+  const procs = await listProcesses(true);
+  const spec = matchSpecFor(entry);
+  const pids = matchPids(spec, procs);
+  for (const pid of pids) {
+    await run('taskkill', ['/PID', String(pid), '/T', '/F']).catch(() => {});
+  }
+  return pids;
+}
+
+/**
+ * 单个条目运行状态。
+ */
+async function getStatus(entry) {
+  const procs = await listProcesses();
+  const spec = matchSpecFor(entry);
+  return matchPids(spec, procs).length > 0;
+}
+
+/**
+ * 批量查询状态（一次进程列表查询），返回 { [id]: 实例数 }（支持多开显示）。
+ */
+async function getStatuses(entries, force = false) {
+  const procs = await listProcesses(force);
+  const out = {};
+  for (const entry of entries) {
+    const spec = matchSpecFor(entry);
+    out[entry.id] = matchPids(spec, procs).length;
+  }
+  return out;
+}
+
+/**
+ * 检查各实例是否存活。
+ *  CLI 实例按隐形标记精确匹配；GUI 实例按启动 PID 判断。
+ */
+async function checkInstances(instances) {
+  const procs = await listProcesses();
+  return instances.map((inst) => {
+    if (inst.kind === 'cli' && inst.marker) {
+      let alive = false;
+      for (const p of procs) {
+        if (EXCLUDED_NAMES.has(p.name)) continue;
+        if (p.cmdline && p.cmdline.includes(inst.marker)) {
+          alive = true;
+          break;
+        }
+      }
+      return { id: inst.id, alive };
+    }
+    const alive = procs.some((p) => p.pid === inst.pid);
+    return { id: inst.id, alive };
+  });
+}
+
+/**
+ * 终止单个实例（CLI 按标记，GUI 按 PID），返回命中的 PID。
+ */
+async function terminateInstance(inst) {
+  const procs = await listProcesses(true);
+  let pids = [];
+  if (inst.kind === 'cli' && inst.marker) {
+    for (const p of procs) {
+      if (EXCLUDED_NAMES.has(p.name)) continue;
+      if (p.cmdline && p.cmdline.includes(inst.marker)) pids.push(p.pid);
+    }
+  } else if (inst.pid) {
+    pids = [inst.pid];
+  }
+  for (const pid of pids) {
+    await run('taskkill', ['/PID', String(pid), '/T', '/F']).catch(() => {});
+  }
+  return pids;
+}
+
+module.exports = { launch, terminate, terminateInstance, checkInstances, getStatus, getStatuses, listProcesses };

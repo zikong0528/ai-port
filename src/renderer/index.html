@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+  <title>AI Dock</title>
+  <link rel="stylesheet" href="styles/theme.css" />
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand" data-i18n="brand">AI DOCK</span>
+    <div class="search">
+      <input id="search" type="text" data-i18n-ph="search" placeholder="搜索…" autocomplete="off" />
+    </div>
+    <div class="actions">
+      <button id="btn-diag" class="btn btn-text" data-i18n="diag">诊断</button>
+      <button id="btn-settings" class="btn btn-text" data-i18n="settings">设置</button>
+      <button id="btn-scan" class="btn btn-outline" data-i18n="scan">重新扫描</button>
+      <button id="btn-add" class="btn btn-primary" data-i18n="add">添加</button>
+    </div>
+  </header>
+
+  <main id="list" class="grid"></main>
+
+  <div id="empty" class="empty hidden">
+    <div class="empty-title" data-i18n="emptyTitle">未检测到任何应用</div>
+    <div class="empty-hint" data-i18n="emptyHint">点击「重新扫描」，AI Dock 会自动检索本机已安装的 AI 应用与命令行 agent。</div>
+  </div>
+
+  <!-- 添加 / 编辑弹窗 -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="modal-title">添加条目</h2>
+        <button id="modal-close" class="btn-text">✕</button>
+      </div>
+      <div class="modal-body">
+        <label><span data-i18n="name">名称</span>
+          <input id="f-name" type="text" placeholder="例如 Claude Code" />
+        </label>
+        <label><span data-i18n="type">类型</span>
+          <select id="f-type">
+            <option value="gui" data-i18n="typeGui">桌面应用</option>
+            <option value="cli" data-i18n="typeCli">命令行 / Agent</option>
+            <option value="store" data-i18n="typeStore">商店应用</option>
+          </select>
+        </label>
+        <div id="f-exe-row" class="field">
+          <label><span data-i18n="exePath">程序路径</span>
+            <div class="row">
+              <input id="f-exe" type="text" data-i18n-ph="exePathPh" placeholder="可执行文件完整路径" />
+              <button id="f-exe-pick" class="btn btn-outline" data-i18n="browse">浏览</button>
+            </div>
+          </label>
+        </div>
+        <div id="f-cmd-row" class="field hidden">
+          <label><span data-i18n="command">启动命令</span>
+            <input id="f-cmd" type="text" data-i18n-ph="commandPh" placeholder="例如 claude / dsh" />
+          </label>
+        </div>
+        <label><span data-i18n="args">启动参数</span>
+          <input id="f-args" type="text" data-i18n-ph="argsPh" placeholder="用空格分隔，例如 web" />
+        </label>
+        <label><span data-i18n="workdir">工作目录</span>
+          <div class="row">
+            <input id="f-workdir" type="text" data-i18n-ph="workdirPh" placeholder="留空则使用默认目录" />
+            <button id="f-workdir-pick" class="btn btn-outline" data-i18n="browse">浏览</button>
+          </div>
+        </label>
+        <label><span data-i18n="note">备注</span>
+          <input id="f-note" type="text" data-i18n-ph="notePh" placeholder="自己的备注，可选" />
+        </label>
+      </div>
+      <div class="modal-foot">
+        <button id="modal-cancel" class="btn btn-outline" data-i18n="cancel">取消</button>
+        <button id="modal-save" class="btn btn-primary" data-i18n="save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 诊断弹窗 -->
+  <div id="diag-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 data-i18n="diagTitle">诊断</h2>
+        <button id="diag-close" class="btn-text">✕</button>
+      </div>
+      <div class="modal-body" id="diag-body">
+        <div class="diag-loading" data-i18n="diagLoading">检测中…</div>
+      </div>
+      <div class="modal-foot">
+        <button id="diag-refresh" class="btn btn-outline" data-i18n="refresh">刷新</button>
+        <button id="diag-ok" class="btn btn-primary" data-i18n="close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置弹窗 -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 data-i18n="settingsTitle">设置</h2>
+        <button id="settings-close" class="btn-text">✕</button>
+      </div>
+      <div class="modal-body">
+        <label class="check-row">
+          <input id="set-dark" type="checkbox" />
+          <span class="check-main">
+            <span data-i18n="darkMode">深色模式</span>
+          </span>
+        </label>
+        <label><span data-i18n="language">语言</span>
+          <select id="set-lang">
+            <option value="auto">跟随系统</option>
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+        <div class="settings-buttons">
+          <button id="btn-update" class="btn btn-outline" data-i18n="update">检查更新</button>
+          <span id="update-status" class="check-hint"></span>
+        </div>
+        <div class="settings-buttons">
+          <button id="btn-export" class="btn btn-outline" data-i18n="exportList">导出列表</button>
+          <button id="btn-import" class="btn btn-outline" data-i18n="importList">导入列表</button>
+        </div>
+        <div class="diag-section" data-i18n="aboutSection">关于</div>
+        <div class="about-row">
+          <span class="about-label">AI Dock</span>
+          <span class="about-value" id="about-version"></span>
+        </div>
+        <div class="settings-buttons">
+          <button id="btn-homepage" class="btn btn-outline" data-i18n="homepageBtn">项目主页</button>
+          <button id="btn-feedback" class="btn btn-outline" data-i18n="feedbackBtn">反馈问题</button>
+        </div>
+        <div class="about-note" data-i18n="aboutPrivacy">所有数据仅保存在本机，不联网、不上传。</div>
+        <div class="about-note" data-i18n="aboutTrademark">本软件展示的产品名称与图标均为其各自所有者的商标。</div>
+      </div>
+      <div class="modal-foot">
+        <button id="settings-ok" class="btn btn-primary" data-i18n="close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 首次引导 -->
+  <div id="onboard-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 data-i18n="onboardTitle">欢迎使用 AI Dock</h2>
+      </div>
+      <div class="modal-body onboard-body">
+        <p data-i18n="onboardP1">自动检索本机已安装的 AI 应用与命令行 agent，一键启动、一键终止。</p>
+        <p data-i18n="onboardP2">完全本地运行：只读取本机的程序信息，不收集、不上传任何数据。</p>
+        <p data-i18n="onboardP3">关闭窗口后 AI Dock 会驻留系统托盘，随时可从托盘再次打开。</p>
+      </div>
+      <div class="modal-foot">
+        <button id="onboard-start" class="btn btn-primary" data-i18n="onboardStart">开始使用</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"><span class="toast-msg"></span><button class="toast-action" style="display:none"></button></div>
+
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
