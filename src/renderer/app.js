@@ -316,7 +316,7 @@ function render() {
           <span class="status${running ? ' running' : ''}${insts.length ? ' expandable' : ''}" data-action="${insts.length ? 'toggle-insts' : ''}" data-id="${escapeHtml(e.id)}" title="${running ? t('running') : t('notRunning')}${insts.length ? ' · ' + t('expandHint') : ''}">
             <span class="status-dot"></span>
             ${running ? '<span class="status-text">' + t('running') + (insts.length > 1 ? ' ×' + insts.length : '') + '</span>' : ''}
-            ${insts.length ? '<span class="inst-chev">' + (expanded ? '▾' : '▸') + '</span>' : ''}
+            ${insts.length ? '<span class="inst-chev">' + (expanded ? '▴' : '▾') + '</span>' : ''}
           </span>
         </div>
         <div class="card-sub" title="${escapeHtml(sub)}">${escapeHtml(sub)}</div>
@@ -445,7 +445,16 @@ async function onScan() {
 async function onLaunch(id) {
   try {
     await window.aidock.launch(id);
-    toast(t('launched'));
+    await refreshList();
+    const n = trackedInstances.filter((i) => i.entryId === id).length;
+    if (n >= 2) {
+      // 首次多开自动展开实例面板（可手动收起）
+      expandedIds.add(id);
+      toast(t('launchedMulti', n), 4000);
+    } else {
+      toast(t('launched'));
+    }
+    render();
     await refreshStatuses();
   } catch (err) {
     toast(t('launchFailed', err.message));

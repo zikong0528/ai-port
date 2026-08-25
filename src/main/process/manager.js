@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const { run, runPowerShellJson } = require('../util/exec');
@@ -210,17 +212,61 @@ async function launchCli(entry) {
   const base = buildCmdLine(entry.commandPath || entry.command || entry.name, entry.args || []);
   // 实例隐形标记：rem 是 cmd 注释，用户无感知，用于多开时按实例精确识别/终止
   const marker = 'aidock-i-' + Math.random().toString(36).slice(2, 10);
-  const cmdline = base + ' & rem ' + marker;
-
   // 窗口标题带上启动时间：与列表里实例条目的「启动于 HH:MM:SS」一致，方便对号入座
+  // 注意：标题要写进 bat 文件（cmd 按系统 GBK 编码读取），因此只用纯 ASCII
   const startedAt = new Date();
-  const title = 'AI Dock - ' + String(entry.name || '').replace(/["&|<>^]/g, '') + ' · ' + hms(startedAt);
+  const safeName = String(entry.name || '')
+    .replace(/["&|<>^]/g, '')
+    .replace(/[^\x20-\x7e]/g, '')
+    .trim();
+  const title = 'AI Dock - ' + (safeName || 'CLI') + ' - ' + hms(startedAt);
+
+  // 标题守护：claude 等 TUI 会覆盖窗口标题，用后台循环每 5 秒把标题重置回来
+  // （用 ping 做延迟不碰 stdin，不会抢 claude 的键盘输入）
+  let inner;
+  try {
+    const tmpDir = path.join(os.tmpdir(), 'aidock-instances');
+    fs.mkdirSync(tmpDir, { recursive: true });
+    cleanupOldBats(tmpDir);
+    const batPath = path.join(tmpDir, marker + '.bat');
+    const bat =
+      '@echo off\r\n' +
+      'start "" /b cmd /q /c "for /l %%i in (1,1,1000000) do (title ' +
+      title +
+      ' & ping -n 6 127.0.0.1 >nul)"\r\n' +
+      base +
+      '\r\n';
+    fs.writeFileSync(batPath, bat, 'utf8');
+    inner = 'call ' + batPath + ' & rem ' + marker;
+  } catch (e) {
+    // 临时目录不可用时退回无标题守护的直启方式
+    inner = base + ' & rem ' + marker;
+  }
+
   const startArgs = ['/c', 'start', title];
   if (entry.workdir) startArgs.push('/D', entry.workdir);
-  startArgs.push('cmd', '/k', cmdline);
+  startArgs.push('cmd', '/k', inner);
 
   const child = await spawnDetached('cmd.exe', startArgs, {});
-  return { pid: child.pid, cmdline, marker, kind: 'cli', startedAt: startedAt.toISOString() };
+  return { pid: child.pid, cmdline: inner, marker, kind: 'cli', startedAt: startedAt.toISOString() };
+}
+
+function cleanupOldBats(dir) {
+  try {
+    const now = Date.now();
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith('.bat')) continue;
+      try {
+        if (now - fs.statSync(path.join(dir, f)).mtimeMs > 24 * 3600 * 1000) {
+          fs.unlinkSync(path.join(dir, f));
+        }
+      } catch (e) {
+        /* 运行中的 bat 被占用，跳过 */
+      }
+    }
+  } catch (e) {
+    /* ignore */
+  }
 }
 
 /**
@@ -233,10 +279,28 @@ async function launchStore(entry) {
 }
 
 /**
+ * 轻量进程列表：tasklist 只给名称+PID，比 PowerShell/WMI 轻得多。
+ * 适用于不需要命令行匹配的场景（没有 CLI 条目时）。
+ */
+let lightCache = null;
+let lightCacheTime = 0;
+async function lightProcesses(force = false) {
+  const now = Date.now();
+  if (!force && lightCache && now - lightCacheTime < CACHE_MS) return lightCache;
+  lightCache = await tasklistProcesses();
+  lightCacheTime = now;
+  return lightCache;
+}
+
+function needCmdline(entries) {
+  return entries.some((e) => e.launchType === 'cli');
+}
+
+/**
  * 一键终止：按匹配规则找到进程并结束整棵进程树。
  */
 async function terminate(entry) {
-  const procs = await listProcesses(true);
+  const procs = entry.launchType === 'cli' ? await listProcesses(true) : await lightProcesses(true);
   const spec = matchSpecFor(entry);
   const pids = matchPids(spec, procs);
   for (const pid of pids) {
@@ -249,16 +313,17 @@ async function terminate(entry) {
  * 单个条目运行状态。
  */
 async function getStatus(entry) {
-  const procs = await listProcesses();
+  const procs = entry.launchType === 'cli' ? await listProcesses() : await lightProcesses();
   const spec = matchSpecFor(entry);
   return matchPids(spec, procs).length > 0;
 }
 
 /**
  * 批量查询状态（一次进程列表查询），返回 { [id]: 实例数 }（支持多开显示）。
+ * 没有 CLI 条目时用轻量 tasklist，避免每次轮询都拉起 PowerShell。
  */
 async function getStatuses(entries, force = false) {
-  const procs = await listProcesses(force);
+  const procs = needCmdline(entries) ? await listProcesses(force) : await lightProcesses(force);
   const out = {};
   for (const entry of entries) {
     const spec = matchSpecFor(entry);
@@ -272,7 +337,8 @@ async function getStatuses(entries, force = false) {
  *  CLI 实例按隐形标记精确匹配；GUI 实例按启动 PID 判断。
  */
 async function checkInstances(instances) {
-  const procs = await listProcesses();
+  const hasCli = instances.some((i) => i.kind === 'cli' && i.marker);
+  const procs = hasCli ? await listProcesses() : await lightProcesses();
   return instances.map((inst) => {
     if (inst.kind === 'cli' && inst.marker) {
       let alive = false;
