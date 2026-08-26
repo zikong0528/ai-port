@@ -60,7 +60,7 @@
     },
     "appx": {
       "identityName": "zikong.AIPort",
-      "publisher": "CN=3461AF2B-9F8D-4860-9D2F-69859BCF49",
+      "publisher": "CN=3461AF2B-9F8D-4860-9D2F-69859B00CF49",
       "publisherDisplayName": "zikong",
       "applicationId": "App",
       "displayName": "AI Port",
