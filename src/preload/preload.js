@@ -28,7 +28,5 @@ contextBridge.exposeInMainWorld('aidock', {
   checkUpdate: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
   onUpdateEvent: (cb) => ipcRenderer.on('update:event', (_e, payload) => cb(payload)),
-  exportList: () => ipcRenderer.invoke('app:export'),
-  importList: () => ipcRenderer.invoke('app:import'),
   pin: (id, pinned) => ipcRenderer.invoke('app:pin', id, pinned),
 });

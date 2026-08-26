@@ -190,8 +190,6 @@ function bindEvents() {
     window.aidock.settingsSet('lang', settings.lang).catch(() => {});
   });
   $('#btn-update').addEventListener('click', onCheckUpdate);
-  $('#btn-export').addEventListener('click', onExport);
-  $('#btn-import').addEventListener('click', onImport);
   $('#btn-homepage').addEventListener('click', () => {
     if (aboutHomepage) window.aidock.openUrl(aboutHomepage);
   });
@@ -689,29 +687,6 @@ async function onCheckUpdate() {
     else el.textContent = t('updateLatest');
   } catch (err) {
     el.textContent = t('updateFailed', err.message);
-  }
-}
-
-async function onExport() {
-  try {
-    const r = await window.aidock.exportList();
-    if (r.ok) toast(t('exportDone', r.path), 4000);
-  } catch (err) {
-    toast(t('saveFailed', err.message));
-  }
-}
-
-async function onImport() {
-  try {
-    const r = await window.aidock.importList();
-    if (!r.ok) {
-      if (r.error) toast(t('importFailed', r.error));
-      return;
-    }
-    toast(t('importDone', r.added));
-    await refreshList();
-  } catch (err) {
-    toast(t('importFailed', err.message));
   }
 }
 

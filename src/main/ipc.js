@@ -312,57 +312,6 @@ function registerIpc({ store }) {
   ipcMain.handle('update:check', async () => updater.checkNow());
   ipcMain.handle('update:install', async () => updater.quitAndInstall());
 
-  // ===== 列表导出 / 导入 =====
-  ipcMain.handle('app:export', async () => {
-    const res = await dialog.showSaveDialog({
-      title: '导出列表',
-      defaultPath: 'ai-dock-list.json',
-      filters: [{ name: 'JSON', extensions: ['json'] }],
-    });
-    if (res.canceled || !res.filePath) return { ok: false };
-    const payload = { version: 1, exportedAt: new Date().toISOString(), entries: store.entries };
-    fs.writeFileSync(res.filePath, JSON.stringify(payload, null, 2), 'utf8');
-    return { ok: true, path: res.filePath };
-  });
-
-  ipcMain.handle('app:import', async () => {
-    const res = await dialog.showOpenDialog({
-      title: '导入列表',
-      filters: [{ name: 'JSON', extensions: ['json'] }],
-      properties: ['openFile'],
-    });
-    if (res.canceled || !res.filePaths.length) return { ok: false };
-    let payload;
-    try {
-      payload = JSON.parse(fs.readFileSync(res.filePaths[0], 'utf8'));
-    } catch (e) {
-      return { ok: false, error: '文件格式无效' };
-    }
-    const incoming = Array.isArray(payload.entries) ? payload.entries : [];
-    const existingIds = new Set(store.entries.map((e) => e.id));
-    let added = 0;
-    for (const it of incoming) {
-      if (!it || !it.name) continue;
-      const entry = normalizeManualEntry({
-        name: it.name,
-        launchType: it.launchType,
-        installPath: it.installPath || '',
-        command: it.command || '',
-        args: it.args || [],
-        workdir: it.workdir || '',
-        description: it.description || '',
-        note: it.note || '',
-      });
-      if (it.id && !existingIds.has(it.id)) entry.id = it.id;
-      if (existingIds.has(entry.id)) continue;
-      entry.appId = it.appId || '';
-      store.addEntry(entry);
-      existingIds.add(entry.id);
-      added++;
-    }
-    return { ok: true, added };
-  });
-
   // ===== 置顶（不视为修改命令/参数） =====
   ipcMain.handle('app:pin', async (_e, id, pinned) => {
     store.updateEntry(id, { pinned: !!pinned });
