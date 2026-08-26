@@ -65,6 +65,7 @@ scripts/              测试与工具脚本（见 §5）
 9. **图标策略**：exe 图标 > 内置官方 logo > 终端符号(`>_`)/首字母；图标有磁盘缓存（userData/icons-cache.json）与运行时解码校验（坏文件退回占位符，绝不裂图）。
 10. **自身排除**：AI Port 不识别自己（名称去版本号归一化 + exe 名 + 进程路径三重判断）。
 11. **npm 包「半安装」防御与修复**：claude 自更新时网络中断会留下半安装现场（bin 里是 echo 占位脚本、全局 shim 丢失、@scope 下有 `.claude-code-XXXX` 备份目录、真身在 `node_modules/<pkg>-win32-x64/` 或备份目录里）。扫描侧：跳过 @scope 下 `.` 开头的残留目录；shim 丢失时兜底直连包内 bin 的可执行文件（校验 MZ 头+大小下限，占位脚本无效）。机器修复配方：用 PE 头找出完好二进制（SizeOfImage 与文件大小大致吻合才算好）→ 坏目录改名挪走 → 备份目录扶正 → 复制真身到 `bin\` → 重建 claude.cmd/claude.ps1/claude 三个 shim。商店应用自动更新后 installPath/appId 随重扫自动刷新。
+12. **商店版 ChatGPT 26.820 启动失败（OpenAI bug）的绕过**：该版把 codex.exe 从 WindowsApps「搬运」到 `%LOCALAPPDATA%\OpenAI\Codex\bin\` 时失败（WindowsApps 文件带 EFS 加密，普通 copyfile 报 "could not be encrypted"，errno -4094），随后报 "Unable to locate the Codex CLI binary"。绕过配方：① 用流式读+明文写（`[IO.File]::OpenRead`→`[IO.File]::Create`+`CopyTo`）把 `resources\codex.exe` 解密复制到 `%LOCALAPPDATA%\AIPort\codex\codex.exe`；② 设用户级环境变量 `CODEX_CLI_PATH` 指向副本；③ 重启 explorer 生效。验证：启动后出现 `codex` 子进程且日志 `post_initialize_connection_state → connected`。OpenAI 修复后需移除该变量并删除副本目录。
 
 ## 5. 构建与测试
 
