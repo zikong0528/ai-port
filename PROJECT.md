@@ -6,7 +6,7 @@
 
 - **版本**：v0.1.0 开发完成，代码已本地 git 提交，**待自测后推送 GitHub**。
 - **代码位置**：`E:\deep seek Harness\AI-Port`
-- **GitHub**：https://github.com/zikong0528/AI-Port （仓库已建，remote 已配置为 SSH）
+- **GitHub**：https://github.com/zikong0528/ai-port （仓库已建，remote 已配置为 SSH）
 - **发布步骤**（按顺序）：
   1. 自测（清单见 §5）
   2. 推送：`git push -u origin main` → `git tag v0.1.0` → `git push origin v0.1.0`

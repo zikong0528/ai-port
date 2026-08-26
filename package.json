@@ -8,7 +8,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zikong0528/ai-dock"
+    "url": "https://github.com/zikong0528/ai-port"
   },
   "scripts": {
     "start": "electron .",
@@ -70,7 +70,7 @@
       {
         "provider": "github",
         "owner": "zikong0528",
-        "repo": "ai-dock"
+        "repo": "ai-port"
       }
     ]
   },

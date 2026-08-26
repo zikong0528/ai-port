@@ -22,4 +22,4 @@ AI Port 不接入任何第三方统计、广告或跟踪服务。内置的各 AI
 ## 联系方式
 
 如有疑问或建议，请通过 GitHub Issues 联系我们：
-https://github.com/zikong0528/ai-dock/issues
+https://github.com/zikong0528/ai-port/issues

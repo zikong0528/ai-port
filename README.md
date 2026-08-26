@@ -63,7 +63,7 @@ exe 底层元数据（公司名/产品名/原始文件名）→ 防改名、防�
 ### 快速开始
 
 ```bash
-git clone https://github.com/zikong0528/AI-Port
+git clone https://github.com/zikong0528/ai-port
 cd AI-Port
 npm install
 npm start          # 开发运行
