@@ -25,7 +25,7 @@
 
 ```
 src/main/
-  main.js            入口：单实例锁、窗口、窗口位置记忆、内存优化开关（禁GPU/breakpad/拼写）
+  main.js            入口：单实例锁、窗口、窗口位置记忆（多屏校验）、内存优化开关（禁 breakpad/拼写，GPU 保留硬加速）
   ipc.js             全部 IPC：扫描合并/列表/状态/启停/实例/图标/logo/设置/诊断/关于/更新/撤销
   updater.js         electron-updater 封装（便携版与开发模式自动跳过）
   store/store.js     JSON 持久化：entries / settings / instances（实例台账）

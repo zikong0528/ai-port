@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, screen } = require('electron');
 const { Store } = require('./store/store');
 const { registerIpc } = require('./ipc');
 const updater = require('./updater');
@@ -51,7 +51,7 @@ function createWindow() {
     },
   };
 
-  // 恢复上次的窗口大小与位置
+  // 恢复上次的窗口大小与位置（校验位置仍在某块屏幕内，防止拔掉外接屏后窗口跑到屏幕外）
   const bounds = store ? store.getSetting('windowBounds', null) : null;
   if (
     bounds &&
@@ -60,10 +60,21 @@ function createWindow() {
     typeof bounds.height === 'number' &&
     bounds.height >= opts.minHeight
   ) {
-    opts.x = bounds.x;
-    opts.y = bounds.y;
-    opts.width = bounds.width;
-    opts.height = bounds.height;
+    const onScreen = screen.getAllDisplays().some((d) => {
+      const a = d.workArea;
+      return (
+        bounds.x < a.x + a.width &&
+        bounds.x + bounds.width > a.x &&
+        bounds.y < a.y + a.height &&
+        bounds.y + bounds.height > a.y
+      );
+    });
+    if (onScreen) {
+      opts.x = bounds.x;
+      opts.y = bounds.y;
+      opts.width = bounds.width;
+      opts.height = bounds.height;
+    }
   }
 
   mainWindow = new BrowserWindow(opts);
