@@ -52,7 +52,8 @@ async function scanNpmPackages() {
           continue;
         }
         for (const sub of subs) {
-          if (!sub.isDirectory()) continue;
+          // 跳过隐藏目录（如 claude 更新失败残留的 .claude-code-XXXX 备份目录）
+          if (!sub.isDirectory() || sub.name.startsWith('.')) continue;
           const info = readPackage(path.join(scopePath, sub.name));
           if (info) {
             info.npmRoot = root;

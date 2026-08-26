@@ -27,6 +27,11 @@ function registerIpc({ store }) {
           if (d.command && d.command !== existing.command) patch.command = d.command;
           if (Array.isArray(d.args) && JSON.stringify(d.args) !== JSON.stringify(existing.args || [])) patch.args = d.args;
           if (d.version && d.version !== existing.version) patch.version = d.version;
+          // 商店应用自动更新后安装目录会变（如 OpenAI.Codex 26.818 → 26.820），同步刷新
+          if (existing.launchType === 'store') {
+            if (d.installPath && d.installPath !== existing.installPath) patch.installPath = d.installPath;
+            if (d.appId && d.appId !== existing.appId) patch.appId = d.appId;
+          }
           if (Object.keys(patch).length) {
             store.updateEntry(d.id, patch);
             refreshed++;

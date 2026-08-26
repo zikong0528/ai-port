@@ -246,7 +246,7 @@ async function runScan() {
     const cat = matchCatalog({ npmPackage: pkg.name });
     if (cat && cat.launchType === 'cli') {
       const cmd = (cat.pathExecutables && cat.pathExecutables[0]) || cat.defaultCommand || pkg.name;
-      const commandPath = resolveCommand(cmd, pathMap, pkg.npmRoot);
+      const commandPath = resolveCommand(cmd, pathMap, pkg.npmRoot, pkg.installPath);
       if (!commandPath) continue;
       add(
         buildFromCatalog(cat, {
@@ -261,7 +261,7 @@ async function runScan() {
       );
     } else if (!cat && looksLikeAI(pkg.name + ' ' + pkg.description)) {
       const cmd = (pkg.bin && pkg.bin[0]) || prettyName(pkg.name);
-      const commandPath = resolveCommand(cmd, pathMap, pkg.npmRoot);
+      const commandPath = resolveCommand(cmd, pathMap, pkg.npmRoot, pkg.installPath);
       if (!commandPath) continue;
       add(
         buildCandidate({
@@ -306,7 +306,7 @@ async function runScan() {
  * 解析命令的真实可执行路径：
  * 优先 PATH 上的文件；若 npm 全局 bin 目录不在 PATH 上，则用其完整路径（仍可启动）。
  */
-function resolveCommand(cmd, pathMap, npmRoot) {
+function resolveCommand(cmd, pathMap, npmRoot, installPath) {
   const lower = String(cmd || '').toLowerCase();
   if (!lower) return '';
   const onPath = pathMap.get(lower);
@@ -317,8 +317,32 @@ function resolveCommand(cmd, pathMap, npmRoot) {
       const candidate = path.join(binDir, cmd + ext);
       if (fs.existsSync(candidate)) return candidate;
     }
+    // 全局 shim 丢失时兜底：直接用包内 bin 目录的可执行文件
+    // （必须校验真实 PE 头——claude 等包下载失败时 bin 里可能残留 echo 占位脚本）
+    if (installPath) {
+      const exeName = lower.endsWith('.exe') ? cmd : cmd + '.exe';
+      const pkgBin = path.join(installPath, 'bin', exeName);
+      if (isRealExe(pkgBin)) return pkgBin;
+    }
   }
   return '';
+}
+
+/**
+ * 校验是否为真正的 Windows 可执行文件（MZ 头 + 大小下限）。
+ */
+function isRealExe(p) {
+  try {
+    const st = fs.statSync(p);
+    if (!st.isFile() || st.size < 64 * 1024) return false;
+    const fd = fs.openSync(p, 'r');
+    const buf = Buffer.alloc(2);
+    fs.readSync(fd, buf, 0, 2, 0);
+    fs.closeSync(fd);
+    return buf[0] === 0x4d && buf[1] === 0x5a;
+  } catch (e) {
+    return false;
+  }
 }
 
 function prettyName(pkgName) {
