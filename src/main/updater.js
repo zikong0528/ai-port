@@ -4,10 +4,10 @@ const { app } = require('electron');
 
 /**
  * 自动更新（electron-updater）。
- * 仅支持安装版（NSIS）；便携版与开发模式不启用，全部静默失败。
+ * 仅支持安装版（NSIS）；便携版、开发模式、商店版（MSIX，由商店负责更新）不启用，全部静默失败。
  */
 function isSupported() {
-  return app.isPackaged && !process.env.PORTABLE_EXECUTABLE_DIR;
+  return app.isPackaged && !process.env.PORTABLE_EXECUTABLE_DIR && !process.windowsStore;
 }
 
 function send(getWindow, payload) {

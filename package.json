@@ -15,7 +15,8 @@
     "dev": "electron .",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "dist:win": "electron-builder --win"
+    "dist:win": "electron-builder --win",
+    "dist:store": "electron-builder --win appx"
   },
   "build": {
     "appId": "com.aidock.launcher",
@@ -56,6 +57,14 @@
     },
     "portable": {
       "artifactName": "AI-Port-${version}-portable.exe"
+    },
+    "appx": {
+      "identityName": "zikong.AIPort",
+      "publisher": "CN=3461AF2B-9F8D-4860-9D2F-69859BCF49",
+      "publisherDisplayName": "zikong",
+      "applicationId": "App",
+      "displayName": "AI Port",
+      "languages": ["zh-CN", "en-US"]
     },
     "publish": [
       {
