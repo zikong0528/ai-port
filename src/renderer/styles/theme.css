@@ -575,6 +575,53 @@ body {
   line-height: 1.7;
 }
 
+/* ===== 底部防伪声明 ===== */
+.app-footer {
+  flex: none;
+  text-align: center;
+  padding: 6px 0 8px;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* ===== 右下角圆形浮窗（为爱发电） ===== */
+.donate-float {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  font-size: 20px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s, border-color 0.12s;
+}
+
+.donate-float:hover {
+  transform: scale(1.08);
+  border-color: var(--text);
+}
+
+.donate-body {
+  align-items: center;
+  text-align: center;
+}
+
+.donate-qr {
+  max-width: 220px;
+  max-height: 300px;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+}
+
 /* ===== 深色模式（设计令牌覆盖） ===== */
 html[data-theme='dark'] {
   --bg: #12141a;

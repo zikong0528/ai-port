@@ -11,8 +11,7 @@ let store = null;
 
 app.setAppUserModelId('com.aidock.launcher');
 
-// ===== 内存/进程优化：小工具不需要 GPU 进程与崩溃上报守护 =====
-app.disableHardwareAcceleration(); // 移除 GPU 进程（界面简单，软渲染足够）
+// ===== 内存/进程优化：移除崩溃上报守护；GPU 保留硬加速避免渲染卡顿 =====
 app.commandLine.appendSwitch('disable-breakpad'); // 移除 crashpad 守护进程
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion'); // 被遮挡时少算遮挡，省 CPU
 

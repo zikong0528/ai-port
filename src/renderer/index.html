@@ -23,6 +23,8 @@
 
   <main id="list" class="grid"></main>
 
+  <footer class="app-footer" data-i18n="licenseNotice">仅供个人免费使用 · 严禁商业售卖、转卖、套壳</footer>
+
   <div id="empty" class="empty hidden">
     <div class="empty-title" data-i18n="emptyTitle">未检测到任何应用</div>
     <div class="empty-hint" data-i18n="emptyHint">点击「重新扫描」，AI Dock 会自动检索本机已安装的 AI 应用与命令行 agent。</div>
@@ -125,6 +127,10 @@
           <button id="btn-export" class="btn btn-outline" data-i18n="exportList">导出列表</button>
           <button id="btn-import" class="btn btn-outline" data-i18n="importList">导入列表</button>
         </div>
+        <div class="diag-section" data-i18n="donateTitle">为爱发电</div>
+        <div class="settings-buttons">
+          <button id="btn-donate" class="btn btn-outline">☕ <span data-i18n="donateBtn">请作者喝杯咖啡</span></button>
+        </div>
         <div class="diag-section" data-i18n="aboutSection">关于</div>
         <div class="about-row">
           <span class="about-label">AI Dock</span>
@@ -136,12 +142,34 @@
         </div>
         <div class="about-note" data-i18n="aboutPrivacy">所有数据仅保存在本机，不联网、不上传。</div>
         <div class="about-note" data-i18n="aboutTrademark">本软件展示的产品名称与图标均为其各自所有者的商标。</div>
+        <div class="about-note" data-i18n="licenseNotice">仅供个人免费使用 · 严禁商业售卖、转卖、套壳</div>
       </div>
       <div class="modal-foot">
         <button id="settings-ok" class="btn btn-primary" data-i18n="close">关闭</button>
       </div>
     </div>
   </div>
+
+  <!-- 为爱发电弹窗 -->
+  <div id="donate-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 data-i18n="donateTitle">为爱发电</h2>
+        <button id="donate-close" class="btn-text">✕</button>
+      </div>
+      <div class="modal-body donate-body">
+        <img id="donate-qr" class="donate-qr hidden" alt="微信收款码" />
+        <div id="donate-missing" class="about-note hidden" data-i18n="donateMissing">收款码准备中，新版本会带上</div>
+        <div class="about-note" data-i18n="donateText">如果 AI Dock 对你有帮助，欢迎请我喝杯咖啡</div>
+      </div>
+      <div class="modal-foot">
+        <button id="donate-ok" class="btn btn-primary" data-i18n="close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右下角圆形浮窗 -->
+  <button id="btn-donate-float" class="donate-float" title="为爱发电">☕</button>
 
   <!-- 首次引导 -->
   <div id="onboard-modal" class="modal hidden">

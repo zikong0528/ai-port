@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('aidock', {
   settingsSet: (key, value) => ipcRenderer.invoke('settings:set', key, value),
   about: () => ipcRenderer.invoke('app:about'),
   openUrl: (url) => ipcRenderer.invoke('app:open-url', url),
+  donateImage: () => ipcRenderer.invoke('app:donate-image'),
   restore: (entry) => ipcRenderer.invoke('app:restore', entry),
   icons: (paths) => ipcRenderer.invoke('app:icons', paths),
   logos: (ids) => ipcRenderer.invoke('app:logos', ids),

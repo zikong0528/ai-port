@@ -1,21 +1,13 @@
-MIT License
+AI Dock 使用许可（个人免费使用）
 
 Copyright (c) 2025 AI Dock contributors
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+本软件仅供个人免费使用。你可以自由使用、复制并分享本软件（含源码），但必须满足以下条件：
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. 严禁将本软件（或其修改版本）用于任何形式的商业售卖、转卖、出租、搭售或付费分发；
+2. 严禁对本软件进行套壳、改名、抄袭界面后作为其他产品另行发布；
+3. 任何再分发都必须保留本许可声明与版权信息；
+4. 源码可用于学习、个人修改与贡献，但商业性使用须事先获得作者书面授权。
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+本软件按「现状」提供，作者不提供任何明示或暗示的担保，
+包括但不限于适销性、特定用途适用性与不侵权的担保。

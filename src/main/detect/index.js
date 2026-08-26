@@ -4,7 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 const fs = require('fs');
 
-const { loadCatalog, matchCatalog, looksLikeAI } = require('./catalog');
+const { loadCatalog, matchCatalog, looksLikeAI, companyVeto } = require('./catalog');
 const { scanRegistry } = require('./registry-scanner');
 const { scanStartMenu } = require('./startmenu-scanner');
 const { scanNpmPackages } = require('./npm-scanner');
@@ -169,9 +169,23 @@ async function runScan() {
       exeName,
       companyName: meta.companyName,
       productName: meta.productName,
+      originalFilename: meta.originalFilename,
     });
     const label = SOURCE_LABELS[c.source] || c.source;
     if (cat && cat.launchType === 'gui') {
+      // 元数据否决：名字像某个 AI、但 exe 公司名与特征库不符 → 冒名顶替，降级为候选
+      if (companyVeto(cat, meta.companyName)) {
+        add(
+          buildCandidate({
+            name: c.name,
+            launchType: 'gui',
+            installPath: c.launchPath,
+            sourceLabel: label + '（疑似冒名）',
+          }),
+          c.source
+        );
+        continue;
+      }
       add(
         buildFromCatalog(cat, {
           installPath: c.launchPath,

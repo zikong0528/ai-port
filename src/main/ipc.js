@@ -40,13 +40,16 @@ function registerIpc({ store }) {
     }
 
     // 清理：自动检测、未被用户修改的条目若已检测不到（应用卸载/特征库修正），自动移除
+    // 保护：扫描结果为 0（扫描异常，如 PowerShell 被临时禁用）时跳过清理，防止误清空用户列表
     const detectedIds = new Set(detected.map((d) => d.id));
     let removed = 0;
-    for (const e of store.entries.slice()) {
-      if (e.modifiedByUser || e.detectedBy === 'manual') continue;
-      if (detectedIds.has(e.id)) continue;
-      store.removeEntry(e.id);
-      removed++;
+    if (detected.length > 0) {
+      for (const e of store.entries.slice()) {
+        if (e.modifiedByUser || e.detectedBy === 'manual') continue;
+        if (detectedIds.has(e.id)) continue;
+        store.removeEntry(e.id);
+        removed++;
+      }
     }
 
     return { added, refreshed, removed, total: store.entries.length, detected: detected.length, stats: scan.stats };
@@ -129,10 +132,13 @@ function registerIpc({ store }) {
     return { ...result, id, instanceId: inst.id };
   });
 
-  // 一键终止（全部实例）
+  // 一键终止（全部实例）：先按标记关闭各实例窗口（含小黑窗），再按条目特征清残留
   ipcMain.handle('app:terminate', async (_e, id) => {
     const entry = store.findEntry(id);
     if (!entry) throw new Error('条目不存在');
+    for (const inst of store.instances.filter((i) => i.entryId === id)) {
+      await terminateInstance(inst).catch(() => {});
+    }
     const pids = await terminate(entry);
     store.removeInstancesForEntry(id);
     return { pids, id };
@@ -190,6 +196,18 @@ function registerIpc({ store }) {
       /* ignore */
     }
     return { version: app.getVersion(), homepage };
+  });
+
+  // ===== 为爱发电收款码（resources/donate.png，缺失时返回 null） =====
+  ipcMain.handle('app:donate-image', async () => {
+    try {
+      const buf = fs.readFileSync(path.join(__dirname, '..', '..', 'resources', 'donate.png'));
+      const img = nativeImage.createFromBuffer(buf);
+      if (!img.isEmpty()) return img.toDataURL();
+    } catch (e) {
+      /* 无收款码 */
+    }
+    return null;
   });
 
   // ===== 在默认浏览器打开链接 =====

@@ -22,31 +22,55 @@ const EXCLUDED_NAMES = new Set([
 
 /**
  * 列出当前进程（pid / name / commandLine），结果缓存约 1.5s。
+ * 优化：tasklist 提供全量镜像名（轻量），WMI 只查询 CLI 宿主进程的命令行（过滤后仅几十个），
+ * 大幅减少每次轮询的 PowerShell/WMI 开销（卡顿主因）。
  */
-async function listProcesses(force = false) {
+async function listProcesses(force = false, cliNames = []) {
   const now = Date.now();
   if (!force && procCache && now - procCacheTime < CACHE_MS) return procCache;
 
-  const script = `Get-CimInstance Win32_Process | Select-Object ProcessId, Name, CommandLine | ConvertTo-Json -Compress`;
-  const raw = await runPowerShellJson(script);
-  let arr = [];
-  if (Array.isArray(raw)) arr = raw;
-  else if (raw) arr = [raw];
+  const full = await tasklistProcesses();
+  let withCmd = [];
 
-  if (arr.length) {
-    procCache = arr
-      .filter((p) => p && p.ProcessId)
-      .map((p) => ({
-        pid: p.ProcessId,
-        name: String(p.Name || '').toLowerCase(),
-        cmdline: normCmdline(p.CommandLine),
-      }));
-  } else {
-    // 降级：PowerShell 不可用时用 tasklist（只有名称+PID，CLI 命令行匹配将退化）
-    procCache = await tasklistProcesses();
+  const filter = buildHostFilter(cliNames);
+  if (filter) {
+    const script = `Get-CimInstance Win32_Process -Filter "${filter}" | Select-Object ProcessId, Name, CommandLine | ConvertTo-Json -Compress`;
+    const raw = await runPowerShellJson(script);
+    let arr = [];
+    if (Array.isArray(raw)) arr = raw;
+    else if (raw) arr = [raw];
+    if (arr.length) {
+      withCmd = arr
+        .filter((p) => p && p.ProcessId)
+        .map((p) => ({
+          pid: p.ProcessId,
+          name: String(p.Name || '').toLowerCase(),
+          cmdline: normCmdline(p.CommandLine),
+        }));
+    }
   }
+
+  // 合并：tasklist 全量 + WMI 宿主（有命令行，按 pid 覆盖）
+  const map = new Map();
+  for (const p of full) map.set(p.pid, p);
+  for (const p of withCmd) map.set(p.pid, p);
+  procCache = Array.from(map.values());
   procCacheTime = now;
   return procCache;
+}
+
+const COMMON_HOSTS = ['node.exe', 'cmd.exe', 'python.exe', 'pythonw.exe', 'powershell.exe', 'pwsh.exe', 'bash.exe'];
+
+function buildHostFilter(cliNames) {
+  const set = new Set(COMMON_HOSTS);
+  for (const n of cliNames || []) {
+    const b = String(n || '').toLowerCase();
+    if (b.endsWith('.exe') || b.endsWith('.cmd') || b.endsWith('.bat')) set.add(b);
+  }
+  if (!set.size) return '';
+  return Array.from(set)
+    .map((n) => "Name='" + n + "'")
+    .join(' or ');
 }
 
 /**
@@ -216,13 +240,15 @@ async function launchCli(entry) {
   // 注意：标题要写进 bat 文件（cmd 按系统 GBK 编码读取），因此只用纯 ASCII
   const startedAt = new Date();
   const safeName = String(entry.name || '')
-    .replace(/["&|<>^]/g, '')
+    .replace(/[%"&|<>^]/g, '')
     .replace(/[^\x20-\x7e]/g, '')
     .trim();
   const title = 'AI Dock - ' + (safeName || 'CLI') + ' - ' + hms(startedAt);
 
   // 标题守护：claude 等 TUI 会覆盖窗口标题，用后台循环每 5 秒把标题重置回来
   // （用 ping 做延迟不碰 stdin，不会抢 claude 的键盘输入）
+  // 注意：写进 bat 的内容要把 % 翻倍（%%），否则 cmd 会按变量展开，命令会坏
+  const baseForBat = String(base).replace(/%/g, '%%');
   let inner;
   try {
     const tmpDir = path.join(os.tmpdir(), 'aidock-instances');
@@ -234,7 +260,7 @@ async function launchCli(entry) {
       'start "" /b cmd /q /c "for /l %%i in (1,1,1000000) do (title ' +
       title +
       ' & ping -n 6 127.0.0.1 >nul)"\r\n' +
-      base +
+      baseForBat +
       '\r\n';
     fs.writeFileSync(batPath, bat, 'utf8');
     inner = 'call ' + batPath + ' & rem ' + marker;
@@ -296,11 +322,17 @@ function needCmdline(entries) {
   return entries.some((e) => e.launchType === 'cli');
 }
 
+function cliNamesFrom(entries) {
+  return entries
+    .filter((e) => e.launchType === 'cli')
+    .map((e) => (e.commandPath ? path.basename(e.commandPath) : e.command || ''));
+}
+
 /**
  * 一键终止：按匹配规则找到进程并结束整棵进程树。
  */
 async function terminate(entry) {
-  const procs = entry.launchType === 'cli' ? await listProcesses(true) : await lightProcesses(true);
+  const procs = entry.launchType === 'cli' ? await listProcesses(true, [path.basename(entry.commandPath || entry.command || '')]) : await lightProcesses(true);
   const spec = matchSpecFor(entry);
   const pids = matchPids(spec, procs);
   for (const pid of pids) {
@@ -313,7 +345,7 @@ async function terminate(entry) {
  * 单个条目运行状态。
  */
 async function getStatus(entry) {
-  const procs = entry.launchType === 'cli' ? await listProcesses() : await lightProcesses();
+  const procs = entry.launchType === 'cli' ? await listProcesses(false, [path.basename(entry.commandPath || entry.command || '')]) : await lightProcesses();
   const spec = matchSpecFor(entry);
   return matchPids(spec, procs).length > 0;
 }
@@ -323,7 +355,7 @@ async function getStatus(entry) {
  * 没有 CLI 条目时用轻量 tasklist，避免每次轮询都拉起 PowerShell。
  */
 async function getStatuses(entries, force = false) {
-  const procs = needCmdline(entries) ? await listProcesses(force) : await lightProcesses(force);
+  const procs = needCmdline(entries) ? await listProcesses(force, cliNamesFrom(entries)) : await lightProcesses(force);
   const out = {};
   for (const entry of entries) {
     const spec = matchSpecFor(entry);

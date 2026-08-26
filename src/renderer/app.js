@@ -55,8 +55,6 @@ function init() {
   bindEvents();
   loadSettings().then(async () => {
     await refreshList();
-    // 列表为空时自动扫描（首次启动/清空后的场景）
-    if (!entries.length) onScan();
     startPolling();
     checkOnboarding();
   });
@@ -210,6 +208,38 @@ function bindEvents() {
     if (payload.type === 'available') toast(t('updateAvailableToast', payload.version || ''), 4000);
     else if (payload.type === 'downloaded') toast(t('updateDownloadedToast', payload.version || ''), 6000);
   });
+
+  // 为爱发电
+  $('#btn-donate-float').addEventListener('click', openDonate);
+  $('#btn-donate').addEventListener('click', openDonate);
+  $('#donate-close').addEventListener('click', closeDonate);
+  $('#donate-ok').addEventListener('click', closeDonate);
+  $('#donate-modal').addEventListener('click', (e) => {
+    if (e.target === $('#donate-modal')) closeDonate();
+  });
+}
+
+// ===== 为爱发电 =====
+async function openDonate() {
+  $('#donate-modal').classList.remove('hidden');
+  try {
+    const url = await window.aidock.donateImage();
+    if (url) {
+      $('#donate-qr').src = url;
+      $('#donate-qr').classList.remove('hidden');
+      $('#donate-missing').classList.add('hidden');
+    } else {
+      $('#donate-qr').classList.add('hidden');
+      $('#donate-missing').classList.remove('hidden');
+    }
+  } catch (e) {
+    $('#donate-qr').classList.add('hidden');
+    $('#donate-missing').classList.remove('hidden');
+  }
+}
+
+function closeDonate() {
+  $('#donate-modal').classList.add('hidden');
 }
 
 // ===== 数据 =====
@@ -429,16 +459,20 @@ async function onScan() {
   const btn = $('#btn-scan');
   btn.disabled = true;
   btn.textContent = t('scanning');
+  let res;
   try {
-    const res = await window.aidock.scan();
-    toast(t('scanDone', res.added, res.refreshed, res.removed, res.total));
-    await refreshList();
+    res = await window.aidock.scan();
   } catch (err) {
     toast(t('scanFailed', err.message));
   } finally {
+    // 扫描接口一返回就恢复按钮，列表刷新在后台继续
     scanning = false;
     btn.disabled = false;
     btn.textContent = t('scan');
+  }
+  if (res) {
+    toast(t('scanDone', res.added, res.refreshed, res.removed, res.total));
+    await refreshList();
   }
 }
 

@@ -34,6 +34,7 @@ function matchCatalog(query = {}) {
   const exeName = (query.exeName || '').toLowerCase();
   const companyName = (query.companyName || '').toLowerCase();
   const productName = (query.productName || '').toLowerCase();
+  const originalFilename = (query.originalFilename || '').toLowerCase();
   const npmPackage = (query.npmPackage || '').toLowerCase();
   const pathExecutable = (query.pathExecutable || '').toLowerCase();
   const storePackage = (query.storePackage || '').toLowerCase();
@@ -53,6 +54,10 @@ function matchCatalog(query = {}) {
     if (productName && (entry.displayNamePatterns || []).some((p) => productName.includes(p.toLowerCase()))) {
       return entry;
     }
+    // 底层元数据：原始文件名（OriginalFilename，exe 被改名后仍保持原名）
+    if (originalFilename && (entry.exeNames || []).some((n) => n.toLowerCase() === originalFilename)) {
+      return entry;
+    }
     if (storePackage && (entry.storePackageNames || []).some((p) => p.toLowerCase() === storePackage)) {
       return entry;
     }
@@ -64,6 +69,18 @@ function matchCatalog(query = {}) {
     }
   }
   return null;
+}
+
+/**
+ * 元数据否决检查：特征库条目声明了公司名、且 exe 元数据里也有公司名、
+ * 但两者不匹配 → 视为「冒名顶替」（用户把别的软件改成了这个 AI 的名字）。
+ */
+function companyVeto(cat, metaCompanyName) {
+  const names = (cat && cat.companyNames) || [];
+  if (!names.length) return false;
+  const actual = String(metaCompanyName || '').toLowerCase();
+  if (!actual) return false; // 读不到元数据时不否决（如商店应用/无版本信息的 exe）
+  return !names.some((c) => actual.includes(c.toLowerCase()));
 }
 
 /**
@@ -91,4 +108,4 @@ function looksLikeAI(text) {
   return false;
 }
 
-module.exports = { loadCatalog, matchCatalog, looksLikeAI };
+module.exports = { loadCatalog, matchCatalog, looksLikeAI, companyVeto };
