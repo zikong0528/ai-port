@@ -3,22 +3,25 @@
 const fs = require('fs');
 const path = require('path');
 const { runCmd } = require('../util/exec');
+const { realAppData, realPathsEnv } = require('../util/realpaths');
 
 /**
  * 定位 npm 全局 node_modules 目录（多个候选）。
+ * 注意：用真实 APPDATA（商店版 MSIX 会把环境变量重定向，npm root -g 会返回错误目录）。
  */
 async function npmGlobalRoots() {
   const roots = [];
   try {
-    const out = await runCmd('npm root -g');
+    const out = await runCmd('npm root -g', { env: realPathsEnv() });
     const lines = out.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     const root = lines[lines.length - 1];
     if (root) roots.push(root);
   } catch (e) {
     // npm 不存在时走 fallback
   }
-  if (process.env.APPDATA) {
-    roots.push(path.join(process.env.APPDATA, 'npm', 'node_modules'));
+  const appData = realAppData();
+  if (appData) {
+    roots.push(path.join(appData, 'npm', 'node_modules'));
   }
   roots.push(path.join(path.dirname(process.execPath), 'node_modules'));
   return roots;

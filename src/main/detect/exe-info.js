@@ -19,10 +19,13 @@ async function getExeInfoBatch(paths) {
   ];
   if (!unique.length) return {};
 
-  const jsonPaths = JSON.stringify(unique);
+  // 路径必须以 PowerShell 单引号字符串字面量嵌入：
+  // JSON.stringify 会把 \ 转义成 \\，而 -LiteralPath 按字面解析 → 永远找不到文件。
+  // 单引号 PS 字符串中反斜杠是字面量，路径原样保留。
+  const psArr = unique.map((p) => "'" + p.replace(/'/g, "''") + "'").join(',');
   const script = `
 $ErrorActionPreference = 'SilentlyContinue'
-$paths = ${jsonPaths}
+$paths = @(${psArr})
 $result = @()
 foreach ($p in $paths) {
   $vi = (Get-Item -LiteralPath $p -ErrorAction SilentlyContinue).VersionInfo

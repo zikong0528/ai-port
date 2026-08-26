@@ -5,6 +5,7 @@ const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const { run, runPowerShellJson } = require('../util/exec');
+const { BROWSER_HOSTS } = require('../detect/catalog');
 
 // 进程列表缓存，避免状态轮询频繁调用 WMI
 let procCache = null;
@@ -65,7 +66,15 @@ function buildHostFilter(cliNames) {
   const set = new Set(COMMON_HOSTS);
   for (const n of cliNames || []) {
     const b = String(n || '').toLowerCase();
-    if (b.endsWith('.exe') || b.endsWith('.cmd') || b.endsWith('.bat')) set.add(b);
+    if (!b) continue;
+    if (b.endsWith('.exe') || b.endsWith('.cmd') || b.endsWith('.bat')) {
+      set.add(b);
+    } else {
+      // 裸命令（手动添加的 CLI，如 ping / aider）：实际进程是 <命令>.exe，
+      // 两个都加进过滤（WMI Name 是镜像名，裸名不会误命中）。
+      set.add(b);
+      set.add(b + '.exe');
+    }
   }
   if (!set.size) return '';
   return Array.from(set)
@@ -118,7 +127,12 @@ function matchSpecFor(entry) {
   if (entry.launchType === 'gui' || entry.launchType === 'store') {
     const p = normPath(entry.installPath);
     if (p.endsWith('.exe')) {
-      return { kind: 'image', value: path.basename(p) };
+      const base = path.basename(p);
+      // PWA（浏览器宿主 + 应用参数）：按参数匹配命令行，才能区分不同 PWA 与普通浏览器窗口
+      if (entry.launchType === 'gui' && BROWSER_HOSTS.has(base.toLowerCase()) && entry.args && entry.args.length) {
+        return { kind: 'cmdline', value: normCmdline((entry.args || []).join(' ')), browser: true };
+      }
+      return { kind: 'image', value: base };
     }
     if (p) {
       return { kind: 'cmdline', value: p };
@@ -159,6 +173,10 @@ function matchPids(spec, procs) {
   for (const p of procs) {
     // 跳过共享宿主进程，避免误关用户所有终端窗口
     if (EXCLUDED_NAMES.has(p.name)) continue;
+
+    // 跳过标题守护循环：其 cmdline 里的 ping 延迟不应参与 token 匹配
+    // （否则名为 ping 的 CLI 条目会误命中所有实例的标题守护进程）
+    if (p.cmdline && p.cmdline.indexOf('(1,1,1000000)') >= 0) continue;
 
     if (spec.kind === 'image') {
       if (p.name === spec.value || p.name === spec.value.replace(/\.exe$/, '') || p.name + '.exe' === spec.value) {
@@ -319,20 +337,36 @@ async function lightProcesses(force = false) {
 }
 
 function needCmdline(entries) {
-  return entries.some((e) => e.launchType === 'cli');
+  return entries.some((e) => {
+    const spec = matchSpecFor(e);
+    return spec.kind === 'cli' || (spec.kind === 'cmdline' && spec.browser);
+  });
 }
 
-function cliNamesFrom(entries) {
-  return entries
+/**
+ * 需要命令行才能匹配的宿主进程名列表：
+ * CLI 命令名（claude.cmd / dsh.cmd …）+ PWA 浏览器宿主（msedge.exe …）。
+ */
+function hostNamesFrom(entries) {
+  const names = entries
     .filter((e) => e.launchType === 'cli')
     .map((e) => (e.commandPath ? path.basename(e.commandPath) : e.command || ''));
+  for (const e of entries) {
+    if (e.launchType === 'gui' || e.launchType === 'store') {
+      const spec = matchSpecFor(e);
+      if (spec.browser && spec.kind === 'cmdline' && e.installPath) {
+        names.push(path.basename(e.installPath));
+      }
+    }
+  }
+  return names;
 }
 
 /**
  * 一键终止：按匹配规则找到进程并结束整棵进程树。
  */
 async function terminate(entry) {
-  const procs = entry.launchType === 'cli' ? await listProcesses(true, [path.basename(entry.commandPath || entry.command || '')]) : await lightProcesses(true);
+  const procs = needCmdline([entry]) ? await listProcesses(true, hostNamesFrom([entry])) : await lightProcesses(true);
   const spec = matchSpecFor(entry);
   const pids = matchPids(spec, procs);
   for (const pid of pids) {
@@ -345,7 +379,7 @@ async function terminate(entry) {
  * 单个条目运行状态。
  */
 async function getStatus(entry) {
-  const procs = entry.launchType === 'cli' ? await listProcesses(false, [path.basename(entry.commandPath || entry.command || '')]) : await lightProcesses();
+  const procs = needCmdline([entry]) ? await listProcesses(false, hostNamesFrom([entry])) : await lightProcesses();
   const spec = matchSpecFor(entry);
   return matchPids(spec, procs).length > 0;
 }
@@ -355,7 +389,7 @@ async function getStatus(entry) {
  * 没有 CLI 条目时用轻量 tasklist，避免每次轮询都拉起 PowerShell。
  */
 async function getStatuses(entries, force = false) {
-  const procs = needCmdline(entries) ? await listProcesses(force, cliNamesFrom(entries)) : await lightProcesses(force);
+  const procs = needCmdline(entries) ? await listProcesses(force, hostNamesFrom(entries)) : await lightProcesses(force);
   const out = {};
   for (const entry of entries) {
     const spec = matchSpecFor(entry);
@@ -408,4 +442,4 @@ async function terminateInstance(inst) {
   return pids;
 }
 
-module.exports = { launch, terminate, terminateInstance, checkInstances, getStatus, getStatuses, listProcesses };
+module.exports = { launch, terminate, terminateInstance, checkInstances, getStatus, getStatuses, listProcesses, matchSpecFor, normCmdline, cmdlineHasToken, buildHostFilter, matchPids };

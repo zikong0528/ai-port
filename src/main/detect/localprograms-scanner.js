@@ -2,14 +2,18 @@
 
 const fs = require('fs');
 const path = require('path');
+const { realLocalAppData } = require('../util/realpaths');
 
 /**
  * 扫描 %LOCALAPPDATA%\Programs（许多按用户安装/便携应用装在这里，
  * 且不一定出现在开始菜单或注册表）。
  * 对每个子目录找主 exe：优先同名 exe，否则目录内唯一 exe。
+ * 注意：用真实 LOCALAPPDATA（商店版 MSIX 会把环境变量重定向到包私有目录）。
  */
 function scanLocalPrograms() {
-  const base = path.join(process.env.LOCALAPPDATA || '', 'Programs');
+  const la = realLocalAppData();
+  if (!la) return [];
+  const base = path.join(la, 'Programs');
   const results = [];
   let entries = [];
   try {
@@ -46,4 +50,4 @@ function findMainExe(dir, dirName) {
   return '';
 }
 
-module.exports = { scanLocalPrograms };
+module.exports = { scanLocalPrograms, findMainExe };

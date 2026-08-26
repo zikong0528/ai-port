@@ -3,14 +3,16 @@
 const fs = require('fs');
 const path = require('path');
 const { shell } = require('electron');
+const { realAppData } = require('../util/realpaths');
 
 /**
  * 扫描开始菜单快捷方式（.lnk），得到「名称 + 真实 exe 目标」。
  * 这是 GUI 应用一键启动最可靠的路径来源。
+ * 注意：用真实 APPDATA（商店版 MSIX 会把环境变量重定向到包私有目录）。
  */
 function menuDirs() {
   const dirs = [];
-  const appData = process.env.APPDATA;
+  const appData = realAppData();
   const programData = process.env.ProgramData;
   if (appData) dirs.push(path.join(appData, 'Microsoft', 'Windows', 'Start Menu', 'Programs'));
   if (programData) dirs.push(path.join(programData, 'Microsoft', 'Windows', 'Start Menu', 'Programs'));

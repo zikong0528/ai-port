@@ -1,6 +1,6 @@
 'use strict';
 
-// AI Dock 检测自检：以 electron 主进程方式运行，输出检测结果后退出。
+// AI Port 检测自检：以 electron 主进程方式运行，输出检测结果后退出。
 // 用法：npx electron scripts/scan-test.js
 const { app } = require('electron');
 const { runScan } = require('../src/main/detect');
@@ -8,7 +8,7 @@ const { listProcesses } = require('../src/main/process/manager');
 
 app.whenReady().then(async () => {
   try {
-    console.log('==== AI Dock 检测自检 ====');
+    console.log('==== AI Port 检测自检 ====');
 
     const procs = await listProcesses(true);
     console.log('WMI 进程列表（含命令行）数量:', procs.length);

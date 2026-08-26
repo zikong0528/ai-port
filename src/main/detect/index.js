@@ -4,7 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 const fs = require('fs');
 
-const { loadCatalog, matchCatalog, looksLikeAI, companyVeto } = require('./catalog');
+const { loadCatalog, matchCatalog, matchCatalogDetailed, looksLikeAI, companyVeto, BROWSER_HOSTS } = require('./catalog');
 const { scanRegistry } = require('./registry-scanner');
 const { scanStartMenu } = require('./startmenu-scanner');
 const { scanNpmPackages } = require('./npm-scanner');
@@ -144,7 +144,14 @@ async function runScan() {
   for (const item of scanStartMenu()) {
     if (isSelf(item.name, item.exePath)) continue;
     if (!item.exePath || !fs.existsSync(item.exePath)) continue; // 内容筛查：目标必须真实存在
-    guiCandidates.push({ name: item.name, exePath: item.exePath, launchPath: item.exePath, source: 'startmenu' });
+    guiCandidates.push({
+      name: item.name,
+      exePath: item.exePath,
+      launchPath: item.exePath,
+      source: 'startmenu',
+      lnkArgs: item.args || '',
+      lnkCwd: item.cwd || '',
+    });
   }
   for (const item of await scanRegistry()) {
     if (isSelf(item.displayName, item.exePath)) continue;
@@ -163,15 +170,16 @@ async function runScan() {
 
   // 3) GUI 匹配（名称 + 文件名 + 底层元数据）
   for (const c of guiCandidates) {
-    const exeName = c.exePath ? path.basename(c.exePath) : '';
+    const exeName = c.exePath ? path.basename(c.exePath).toLowerCase() : '';
     const meta = (c.exePath && metaMap[c.exePath.toLowerCase()]) || {};
-    const cat = matchCatalog({
+    const m = matchCatalogDetailed({
       displayName: c.name,
       exeName,
       companyName: meta.companyName,
       productName: meta.productName,
       originalFilename: meta.originalFilename,
     });
+    const cat = m ? m.entry : null;
     const label = SOURCE_LABELS[c.source] || c.source;
     if (cat && cat.launchType === 'gui') {
       // 元数据否决：名字像某个 AI、但 exe 公司名与特征库不符 → 冒名顶替，降级为候选
@@ -187,13 +195,50 @@ async function runScan() {
         );
         continue;
       }
+      // 佐证规则：仅靠名字命中时，若 exe 名与底层元数据都无法佐证
+      // （且不是 PWA 浏览器宿主）→ 疑似冒名/乱名，降级为候选。
+      // 防「乱名字 + 无元数据假 exe」冒充正规 AI。
+      const nameOnly = m.signal === 'displayName';
+      const exeOk = (cat.exeNames || []).some((n) => n.toLowerCase() === exeName);
+      const metaOk =
+        (meta.companyName && (cat.companyNames || []).some((c) => meta.companyName.toLowerCase().includes(c.toLowerCase()))) ||
+        (meta.productName && (cat.displayNamePatterns || []).some((p) => meta.productName.toLowerCase().includes(p.toLowerCase()))) ||
+        (meta.originalFilename && (cat.exeNames || []).some((n) => n.toLowerCase() === meta.originalFilename.toLowerCase()));
+      const isBrowser = !!exeName && BROWSER_HOSTS.has(exeName);
+      if (nameOnly && !exeOk && !metaOk && !isBrowser) {
+        add(
+          buildCandidate({
+            name: c.name,
+            launchType: 'gui',
+            installPath: c.launchPath,
+            sourceLabel: label + '（疑似冒名）',
+          }),
+          c.source
+        );
+        continue;
+      }
+      // 开始菜单快捷方式自带的参数与工作目录（PWA 的 --app-id 等）必须保留，否则启动的不是原应用
+      const lnkOverrides =
+        c.source === 'startmenu'
+          ? Object.assign(
+              {},
+              c.lnkArgs ? { args: parseLnkArgs(c.lnkArgs) } : {},
+              c.lnkCwd ? { workdir: c.lnkCwd } : {}
+            )
+          : {};
       add(
-        buildFromCatalog(cat, {
-          installPath: c.launchPath,
-          detectedBy: c.source,
-          sourceLabel: label,
-          version: meta.fileVersion || '',
-        }),
+        buildFromCatalog(
+          cat,
+          Object.assign(
+            {
+              installPath: c.launchPath,
+              detectedBy: c.source,
+              sourceLabel: label,
+              version: meta.fileVersion || '',
+            },
+            lnkOverrides
+          )
+        ),
         c.source
       );
     } else {
@@ -303,6 +348,15 @@ async function runScan() {
 }
 
 /**
+ * 解析 .lnk 自带的参数字符串为数组（"\"--app-id=x\" --foo" → ['--app-id=x', '--foo']）。
+ */
+function parseLnkArgs(args) {
+  if (Array.isArray(args)) return args;
+  const m = String(args || '').match(/(?:[^\s"]+|"[^"]*")+/g);
+  return (m || []).map((s) => s.replace(/^"|"$/g, ''));
+}
+
+/**
  * 解析命令的真实可执行路径：
  * 优先 PATH 上的文件；若 npm 全局 bin 目录不在 PATH 上，则用其完整路径（仍可启动）。
  */
@@ -350,4 +404,4 @@ function prettyName(pkgName) {
   return parts[parts.length - 1];
 }
 
-module.exports = { runScan, buildFromCatalog, buildCandidate, entryKey };
+module.exports = { runScan, buildFromCatalog, buildCandidate, entryKey, isSelf, isRealExe, resolveCommand, parseLnkArgs };

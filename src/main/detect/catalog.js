@@ -18,15 +18,23 @@ function loadCatalog() {
 }
 
 /**
- * 根据「显示名称 / 可执行文件名 / 公司名(底层元数据) / 产品名(底层元数据) /
- * npm 包名 / PATH 可执行名 / 商店包名」匹配特征库条目。
- *
- * 关键：companyName / productName 来自 exe 内嵌版本信息，
- * 用户改快捷方式名或文件名都不会改变它们（底层识别，防改名）。
- * @param {object} query { displayName?, exeName?, companyName?, productName?, npmPackage?, pathExecutable?, storePackage? }
- * @returns {object|null} 命中的特征库条目
+ * PWA 浏览器宿主：名字像 AI 的快捷方式若指向这些浏览器，视为 PWA 而非冒名
+ * （如「ChatGPT」快捷方式 → msedge.exe --app-id=xxx）。
  */
-function matchCatalog(query = {}) {
+const BROWSER_HOSTS = new Set([
+  'msedge.exe',
+  'chrome.exe',
+  'brave.exe',
+  'vivaldi.exe',
+  'opera.exe',
+  'firefox.exe',
+]);
+
+/**
+ * 同 matchCatalog，但返回 { entry, signal }，signal 标明命中的信号类型，
+ * 供调用方做「仅靠名字命中时需额外佐证」的判断（防冒名/乱名欺骗）。
+ */
+function matchCatalogDetailed(query = {}) {
   const catalog = loadCatalog();
   const entries = catalog.entries || [];
 
@@ -41,34 +49,52 @@ function matchCatalog(query = {}) {
 
   for (const entry of entries) {
     if (displayName && (entry.displayNamePatterns || []).some((p) => displayName.includes(p.toLowerCase()))) {
-      return entry;
+      return { entry, signal: 'displayName' };
     }
     if (exeName && (entry.exeNames || []).some((n) => n.toLowerCase() === exeName || n.toLowerCase() === exeName.replace(/\.exe$/i, '') || n.toLowerCase() === exeName + '.exe')) {
-      return entry;
+      return { entry, signal: 'exeName' };
     }
-    // 底层元数据：公司名（如 OpenAI / Anthropic），改名不失效
+    // 底层元数据：公司名（如 OpenAI / Anthropic），改名不失效。
+    // 必须由产品名佐证：宽厂商（Microsoft / ByteDance 等）会命中大量非 AI 产品，
+    // 只有内嵌产品名与特征库模式一致时才按公司名确认（防改名识别）。
     if (companyName && (entry.companyNames || []).some((c) => companyName.includes(c.toLowerCase()))) {
-      return entry;
+      if (productName && (entry.displayNamePatterns || []).some((p) => productName.includes(p.toLowerCase()))) {
+        return { entry, signal: 'companyName' };
+      }
     }
     // 底层元数据：内嵌产品名（如 ProductName = ChatGPT）
     if (productName && (entry.displayNamePatterns || []).some((p) => productName.includes(p.toLowerCase()))) {
-      return entry;
+      return { entry, signal: 'productName' };
     }
     // 底层元数据：原始文件名（OriginalFilename，exe 被改名后仍保持原名）
     if (originalFilename && (entry.exeNames || []).some((n) => n.toLowerCase() === originalFilename)) {
-      return entry;
+      return { entry, signal: 'originalFilename' };
     }
     if (storePackage && (entry.storePackageNames || []).some((p) => p.toLowerCase() === storePackage)) {
-      return entry;
+      return { entry, signal: 'storePackage' };
     }
     if (npmPackage && (entry.npmPackages || []).some((p) => p.toLowerCase() === npmPackage || npmPackage.startsWith(p.toLowerCase() + '/'))) {
-      return entry;
+      return { entry, signal: 'npmPackage' };
     }
     if (pathExecutable && (entry.pathExecutables || []).some((p) => p.toLowerCase() === pathExecutable)) {
-      return entry;
+      return { entry, signal: 'pathExecutable' };
     }
   }
   return null;
+}
+
+/**
+ * 根据「显示名称 / 可执行文件名 / 公司名(底层元数据) / 产品名(底层元数据) /
+ * npm 包名 / PATH 可执行名 / 商店包名」匹配特征库条目。
+ *
+ * 关键：companyName / productName 来自 exe 内嵌版本信息，
+ * 用户改快捷方式名或文件名都不会改变它们（底层识别，防改名）。
+ * @param {object} query { displayName?, exeName?, companyName?, productName?, npmPackage?, pathExecutable?, storePackage? }
+ * @returns {object|null} 命中的特征库条目
+ */
+function matchCatalog(query = {}) {
+  const m = matchCatalogDetailed(query);
+  return m ? m.entry : null;
 }
 
 /**
@@ -108,4 +134,4 @@ function looksLikeAI(text) {
   return false;
 }
 
-module.exports = { loadCatalog, matchCatalog, looksLikeAI, companyVeto };
+module.exports = { loadCatalog, matchCatalog, matchCatalogDetailed, looksLikeAI, companyVeto, BROWSER_HOSTS };

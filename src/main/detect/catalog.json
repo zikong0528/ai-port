@@ -192,7 +192,7 @@
       "npmPackages": [],
       "pathExecutables": [],
       "storePackageNames": [],
-      "displayNamePatterns": ["Microsoft 365 Copilot", "Microsoft Copilot"],
+      "displayNamePatterns": ["Microsoft 365 Copilot", "Microsoft Copilot", "M365Copilot"],
       "exeNames": ["M365Copilot.exe", "Copilot.exe"],
       "defaultCommand": "",
       "defaultArgs": [],
