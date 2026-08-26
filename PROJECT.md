@@ -1,12 +1,12 @@
-# AI Dock 项目手册（新会话 / 协作者必读）
+﻿# AI Port 项目手册（新会话 / 协作者必读）
 
 > 任何新会话接续本项目时，请先通读本文档，再看 `git log` 了解变更历史。
 
 ## 1. 当前状态（请以本段为最新）
 
 - **版本**：v0.1.0 开发完成，代码已本地 git 提交，**待自测后推送 GitHub**。
-- **代码位置**：`E:\deep seek Harness\ai-dock`
-- **GitHub**：https://github.com/zikong0528/ai-dock （仓库已建，remote 已配置为 SSH）
+- **代码位置**：`E:\deep seek Harness\AI-Port`
+- **GitHub**：https://github.com/zikong0528/AI-Port （仓库已建，remote 已配置为 SSH）
 - **发布步骤**（按顺序）：
   1. 自测（清单见 §5）
   2. 推送：`git push -u origin main` → `git tag v0.1.0` → `git push origin v0.1.0`
@@ -16,7 +16,7 @@
 
 ## 2. 项目是什么
 
-**AI Dock**：Windows 桌面启动器。自动检索本机已安装的 AI 应用与 CLI agent（注册表/开始菜单/商店应用/npm 全局/PATH/本地程序目录 + exe 底层元数据防改名），统一列表，一键启动（GUI 直启 / CLI 开终端）、一键终止（进程树），支持**多开与按实例分别终止**。
+**AI Port**：Windows 桌面启动器。自动检索本机已安装的 AI 应用与 CLI agent（注册表/开始菜单/商店应用/npm 全局/PATH/本地程序目录 + exe 底层元数据防改名），统一列表，一键启动（GUI 直启 / CLI 开终端）、一键终止（进程树），支持**多开与按实例分别终止**。
 
 - 技术栈：Electron 44 + 原生 Node（无前端框架）；electron-builder 打包（NSIS + portable）；electron-updater 自动更新（仅安装版）。
 - 设计原则：黑白极简 UI；**完全本地、零联网**（图标内置）；**无托盘**（关闭即退出）；无开机自启；中英双语。
@@ -32,7 +32,7 @@ src/main/
   detect/
     catalog.json     特征库（28 个 AI）：displayNamePatterns/exeNames/storePackageNames/companyNames/npmPackages/pathExecutables/defaultCommand/defaultArgs
     catalog.js       特征库加载 + matchCatalog（含 companyName/productName 底层元数据匹配）+ looksLikeAI
-    index.js         编排 runScan() → { entries, stats }；自身排除（AI Dock 不识别自己）
+    index.js         编排 runScan() → { entries, stats }；自身排除（AI Port 不识别自己）
     startmenu-scanner.js   开始菜单 .lnk（shell.readShortcutLink + 目标存在性校验）
     registry-scanner.js    注册表卸载项（PowerShell，失败自动降级 reg.exe）
     appx-scanner.js        Windows 商店应用（Get-StartApps + manifest 取真实 exe）
@@ -58,12 +58,12 @@ scripts/              测试与工具脚本（见 §5）
 2. **实例隐形标记**：多开同名进程无法区分 → 启动命令尾部追加 `& rem aidock-i-<rand>`，按标记精确识别/终止单个实例；实例台账持久化（重启 app 不丢）。
 3. **双反斜杠归一化**：npm 的 .cmd shim 会把路径拼成 `npm\\node_modules`，匹配前必须把命令行与路径都归一化（合并 `\\`、`/`→`\`、小写）。
 4. **短命令 token 匹配**：dsh 只有 3 字符，长命令用路径边界、短命令用整词边界（空格/引号）、单字符命令（q）不参与 token 匹配（只靠安装路径）。
-5. **标题守护 bat 三个坑**：① bat 必须纯 ASCII（cmd 按 GBK 读 bat，UTF-8 的「·」会变「路」）；② 后台循环必须 `cmd /q /c`（否则循环体命令回显刷屏）；③ 延迟用 `ping -n 6 127.0.0.1 >nul`（`timeout` 会抢 TUI 的 stdin）。窗口标题 = `AI Dock - 名字 - HH:MM:SS`，与实例列表的启动时间对号入座。
+5. **标题守护 bat 三个坑**：① bat 必须纯 ASCII（cmd 按 GBK 读 bat，UTF-8 的「·」会变「路」）；② 后台循环必须 `cmd /q /c`（否则循环体命令回显刷屏）；③ 延迟用 `ping -n 6 127.0.0.1 >nul`（`timeout` 会抢 TUI 的 stdin）。窗口标题 = `AI Port - 名字 - HH:MM:SS`，与实例列表的启动时间对号入座。
 6. **商店应用图标**：WindowsApps 目录受保护，exe 图标提取为空白 → store 条目只用内置 logo（不取 exe 图标）。
 7. **PowerShell 编码与降级**：输出强制 UTF-8（否则中文名乱码）；PowerShell 不可用 → 注册表降级 reg.exe（chcp 65001）、进程列表降级 tasklist（无命令行，CLI 匹配退化）。
 8. **失效条目自动清理**：重扫时，自动检测且用户未修改（modifiedByUser 为假）的条目若已检测不到则自动移除；用户手动编辑过的不动。
 9. **图标策略**：exe 图标 > 内置官方 logo > 终端符号(`>_`)/首字母；图标有磁盘缓存（userData/icons-cache.json）与运行时解码校验（坏文件退回占位符，绝不裂图）。
-10. **自身排除**：AI Dock 不识别自己（名称去版本号归一化 + exe 名 + 进程路径三重判断）。
+10. **自身排除**：AI Port 不识别自己（名称去版本号归一化 + exe 名 + 进程路径三重判断）。
 
 ## 5. 构建与测试
 
@@ -86,7 +86,7 @@ scripts/              测试与工具脚本（见 §5）
 
 ## 7. 发布相关
 
-- `package.json` → `build.publish` = zikong0528/ai-dock（自动更新配置，改仓库需同步改这里）
+- `package.json` → `build.publish` = zikong0528/AI-Port（自动更新配置，改仓库需同步改这里）
 - 便携版不支持自动更新（`PORTABLE_EXECUTABLE_DIR` 检测跳过）
 - GitHub Actions：`release.yml`，tag `v*` 触发，产物挂 Releases
 - 未签名：SmartScreen 会提示，点「仍要运行」；签名/上架 Store 是发布前最后一步

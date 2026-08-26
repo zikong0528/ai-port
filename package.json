@@ -1,10 +1,10 @@
 {
   "name": "ai-dock",
-  "productName": "AI Dock",
+  "productName": "AI Port",
   "version": "0.1.0",
-  "description": "AI Dock —— 自动检索本机 AI 应用与 CLI agent，一键启动 / 一键终止的桌面启动器",
+  "description": "AI Port —— 自动检索本机 AI 应用与 CLI agent，一键启动 / 一键终止的桌面启动器",
   "main": "src/main/main.js",
-  "author": "AI Dock",
+  "author": "AI Port",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -19,7 +19,7 @@
   },
   "build": {
     "appId": "com.aidock.launcher",
-    "productName": "AI Dock",
+    "productName": "AI Port",
     "directories": {
       "output": "release"
     },
@@ -52,10 +52,10 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "AI Dock"
+      "shortcutName": "AI Port"
     },
     "portable": {
-      "artifactName": "AI-Dock-${version}-portable.exe"
+      "artifactName": "AI-Port-${version}-portable.exe"
     },
     "publish": [
       {

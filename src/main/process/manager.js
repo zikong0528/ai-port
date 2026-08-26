@@ -243,7 +243,7 @@ async function launchCli(entry) {
     .replace(/[%"&|<>^]/g, '')
     .replace(/[^\x20-\x7e]/g, '')
     .trim();
-  const title = 'AI Dock - ' + (safeName || 'CLI') + ' - ' + hms(startedAt);
+  const title = 'AI Port - ' + (safeName || 'CLI') + ' - ' + hms(startedAt);
 
   // 标题守护：claude 等 TUI 会覆盖窗口标题，用后台循环每 5 秒把标题重置回来
   // （用 ping 做延迟不碰 stdin，不会抢 claude 的键盘输入）

@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
-  <title>AI Dock</title>
+  <title>AI Port</title>
   <link rel="stylesheet" href="styles/theme.css" />
 </head>
 <body>
   <header class="topbar">
-    <span class="brand" data-i18n="brand">AI DOCK</span>
+    <span class="brand" data-i18n="brand">AI PORT</span>
     <div class="search">
       <input id="search" type="text" data-i18n-ph="search" placeholder="搜索…" autocomplete="off" />
     </div>
@@ -27,7 +27,7 @@
 
   <div id="empty" class="empty hidden">
     <div class="empty-title" data-i18n="emptyTitle">未检测到任何应用</div>
-    <div class="empty-hint" data-i18n="emptyHint">点击「重新扫描」，AI Dock 会自动检索本机已安装的 AI 应用与命令行 agent。</div>
+    <div class="empty-hint" data-i18n="emptyHint">点击「重新扫描」，AI Port 会自动检索本机已安装的 AI 应用与命令行 agent。</div>
   </div>
 
   <!-- 添加 / 编辑弹窗 -->
@@ -129,7 +129,7 @@
         </div>
         <div class="diag-section" data-i18n="aboutSection">关于</div>
         <div class="about-row">
-          <span class="about-label">AI Dock</span>
+          <span class="about-label">AI Port</span>
           <span class="about-value" id="about-version"></span>
         </div>
         <div class="settings-buttons">
@@ -156,7 +156,7 @@
       <div class="modal-body donate-body">
         <img id="donate-qr" class="donate-qr hidden" alt="微信收款码" />
         <div id="donate-missing" class="about-note hidden" data-i18n="donateMissing">收款码准备中，新版本会带上</div>
-        <div class="about-note" data-i18n="donateText">如果 AI Dock 对你有帮助，欢迎请我喝杯咖啡</div>
+        <div class="about-note" data-i18n="donateText">如果 AI Port 对你有帮助，欢迎请我喝杯咖啡</div>
       </div>
       <div class="modal-foot">
         <button id="donate-ok" class="btn btn-primary" data-i18n="close">关闭</button>
@@ -171,12 +171,12 @@
   <div id="onboard-modal" class="modal hidden">
     <div class="modal-card">
       <div class="modal-head">
-        <h2 data-i18n="onboardTitle">欢迎使用 AI Dock</h2>
+        <h2 data-i18n="onboardTitle">欢迎使用 AI Port</h2>
       </div>
       <div class="modal-body onboard-body">
         <p data-i18n="onboardP1">自动检索本机已安装的 AI 应用与命令行 agent，一键启动、一键终止。</p>
         <p data-i18n="onboardP2">完全本地运行：只读取本机的程序信息，不收集、不上传任何数据。</p>
-        <p data-i18n="onboardP3">关闭窗口后 AI Dock 会驻留系统托盘，随时可从托盘再次打开。</p>
+        <p data-i18n="onboardP3">关闭窗口即退出应用，重新打开即可继续使用。</p>
       </div>
       <div class="modal-foot">
         <button id="onboard-start" class="btn btn-primary" data-i18n="onboardStart">开始使用</button>

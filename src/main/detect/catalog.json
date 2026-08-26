@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "AI Dock 内置特征库：用于自动识别本机已安装的 AI 应用与 CLI agent。可通过扩展此文件或添加用户自定义条目来扩大覆盖范围。companyNames 是 exe 内嵌的公司名（底层元数据），用户改快捷方式名/文件名不会改变它，用于防改名识别。",
+  "note": "AI Port 内置特征库：用于自动识别本机已安装的 AI 应用与 CLI agent。可通过扩展此文件或添加用户自定义条目来扩大覆盖范围。companyNames 是 exe 内嵌的公司名（底层元数据），用户改快捷方式名/文件名不会改变它，用于防改名识别。",
   "aiKeywords": [
     "ai", "gpt", "claude", "chatgpt", "deepseek", "kimi", "ollama", "llm",
     "copilot", "gemini", "wenxin", "codex", "aider", "cursor", "windsurf",

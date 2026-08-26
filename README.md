@@ -1,8 +1,8 @@
-# AI Dock ⚓
+﻿# AI Port ⚓
 
 > 自动检索本机 AI 应用与 CLI agent，一键启动 / 一键终止的桌面启动器。
 
-AI Dock 像「米哈游启动器 / WeGame」一样，把你电脑上散落各处的 AI 工具——聊天客户端、本地大模型运行时、AI 编辑器、以及 `claude` / `dsh` / `codex` 这类**命令行 agent**——自动找出来，收进一个统一的列表，一键启动、一键终止。
+AI Port 像「米哈游启动器 / WeGame」一样，把你电脑上散落各处的 AI 工具——聊天客户端、本地大模型运行时、AI 编辑器、以及 `claude` / `dsh` / `codex` 这类**命令行 agent**——自动找出来，收进一个统一的列表，一键启动、一键终止。
 
 **完全本地运行，不联网、不上传任何数据。**
 
@@ -24,8 +24,8 @@ AI Dock 像「米哈游启动器 / WeGame」一样，把你电脑上散落各处
 ## 📦 下载与安装
 
 - 到 [Releases](../../releases) 页面下载最新版：
-  - `AI Dock Setup x.x.x.exe` —— 安装包（推荐，支持自动更新）；
-  - `AI-Dock-x.x.x-portable.exe` —— 免安装便携版。
+  - `AI Port Setup x.x.x.exe` —— 安装包（推荐，支持自动更新）；
+  - `AI-Port-x.x.x-portable.exe` —— 免安装便携版。
 - 未签名的应用首次运行会触发 SmartScreen 提示，点「更多信息 → 仍要运行」即可。
 
 ## 📖 工作原理
@@ -63,8 +63,8 @@ exe 底层元数据（公司名/产品名/原始文件名）→ 防改名、防�
 ### 快速开始
 
 ```bash
-git clone https://github.com/zikong0528/ai-dock
-cd ai-dock
+git clone https://github.com/zikong0528/AI-Port
+cd AI-Port
 npm install
 npm start          # 开发运行
 ```

@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 const { app, BrowserWindow, shell, screen } = require('electron');
 const { Store } = require('./store/store');
@@ -25,7 +26,23 @@ if (!gotLock) {
 }
 
 function onReady() {
-  store = new Store(path.join(app.getPath('userData'), 'config.json'));
+  // 用户数据目录固定（不随产品名变化），并迁移旧版 "AI Dock" 目录的数据
+  const dataDir = path.join(app.getPath('appData'), 'ai-dock');
+  app.setPath('userData', dataDir);
+  try {
+    const legacyDir = path.join(app.getPath('appData'), 'AI Dock');
+    if (!fs.existsSync(path.join(dataDir, 'config.json')) && fs.existsSync(path.join(legacyDir, 'config.json'))) {
+      fs.mkdirSync(dataDir, { recursive: true });
+      fs.copyFileSync(path.join(legacyDir, 'config.json'), path.join(dataDir, 'config.json'));
+      if (fs.existsSync(path.join(legacyDir, 'icons-cache.json'))) {
+        fs.copyFileSync(path.join(legacyDir, 'icons-cache.json'), path.join(dataDir, 'icons-cache.json'));
+      }
+    }
+  } catch (e) {
+    /* 迁移失败不影响启动 */
+  }
+
+  store = new Store(path.join(dataDir, 'config.json'));
   createWindow();
   registerIpc({ store, getWindow: () => mainWindow });
   updater.setup(() => mainWindow);
@@ -39,7 +56,7 @@ function createWindow() {
     height: 700,
     minWidth: 720,
     minHeight: 500,
-    title: 'AI Dock',
+    title: 'AI Port',
     backgroundColor: '#ffffff',
     autoHideMenuBar: true,
     webPreferences: {

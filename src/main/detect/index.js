@@ -13,7 +13,7 @@ const { scanAppx } = require('./appx-scanner');
 const { scanLocalPrograms } = require('./localprograms-scanner');
 const { getExeInfoBatch } = require('./exe-info');
 
-// ===== 自身排除：不把 AI Dock 自己识别为 AI =====
+// ===== 自身排除：不把 AI Port 自己识别为 AI（含旧名 AI Dock，兼容旧安装） =====
 const { app } = require('electron');
 
 function normKey(s) {
@@ -27,15 +27,16 @@ try {
   SELF_EXE = (process.execPath || '').toLowerCase().replace(/\//g, '\\');
 }
 
-const SELF_EXE_NAMES = new Set(['ai dock.exe', 'ai-dock.exe']);
+const SELF_EXE_NAMES = new Set(['ai port.exe', 'ai-port.exe', 'ai dock.exe', 'ai-dock.exe']);
+const SELF_KEYS = new Set(['aiport', 'aidock']);
 
 function isSelf(name, exePath) {
-  // 1) 名称：去掉尾部版本号后归一化比较（覆盖 "AI Dock 0.1.0"）
+  // 1) 名称：去掉尾部版本号后归一化比较（覆盖 "AI Port 0.1.0"）
   const raw = String(name || '').toLowerCase().trim();
   const base = raw.replace(/[-_\s]*(v?\d+(\.\d+)*)$/, '').trim();
-  if (normKey(base) === 'aidock') return true;
+  if (SELF_KEYS.has(normKey(base))) return true;
 
-  // 2) 可执行文件名：安装后固定为 "AI Dock.exe"
+  // 2) 可执行文件名：安装后固定为 "AI Port.exe"
   const p = (exePath || '').toLowerCase().replace(/\//g, '\\');
   if (SELF_EXE_NAMES.has(path.basename(p))) return true;
 

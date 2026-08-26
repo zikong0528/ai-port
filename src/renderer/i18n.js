@@ -1,10 +1,10 @@
 'use strict';
 
-// AI Dock 界面文案（中/英）。renderer 以普通脚本加载，挂到 window.I18N。
+// AI Port 界面文案（中/英）。renderer 以普通脚本加载，挂到 window.I18N。
 (function () {
   const I18N = {
     zh: {
-      brand: 'AI DOCK',
+      brand: 'AI PORT',
       search: '搜索…（回车启动匹配项）',
       scan: '重新扫描',
       scanning: '扫描中…',
@@ -12,7 +12,7 @@
       diag: '诊断',
       settings: '设置',
       emptyTitle: '未检测到任何应用',
-      emptyHint: '点击「重新扫描」，AI Dock 会自动检索本机已安装的 AI 应用与命令行 agent。',
+      emptyHint: '点击「重新扫描」，AI Port 会自动检索本机已安装的 AI 应用与命令行 agent。',
       noMatchTitle: '没有匹配的条目',
       noMatchHint: '换个关键词试试。',
       launch: '启动',
@@ -107,9 +107,9 @@
       licenseNotice: '仅供个人免费使用 · 严禁商业售卖、转卖、套壳',
       donateTitle: '为爱发电',
       donateBtn: '请作者喝杯咖啡',
-      donateText: '如果 AI Dock 对你有帮助，欢迎请我喝杯咖啡',
+      donateText: '如果 AI Port 对你有帮助，欢迎请我喝杯咖啡',
       donateMissing: '收款码准备中，新版本会带上',
-      onboardTitle: '欢迎使用 AI Dock',
+      onboardTitle: '欢迎使用 AI Port',
       onboardP1: '自动检索本机已安装的 AI 应用与命令行 agent，一键启动、一键终止。',
       onboardP2: '完全本地运行：只读取本机的程序信息，不收集、不上传任何数据。',
       onboardP3: '关闭窗口即退出应用，重新打开即可继续使用。',
@@ -119,7 +119,7 @@
       terminateAllHint: '终止该应用的全部实例',
     },
     en: {
-      brand: 'AI DOCK',
+      brand: 'AI PORT',
       search: 'Search… (Enter to launch the match)',
       scan: 'Rescan',
       scanning: 'Scanning…',
@@ -127,7 +127,7 @@
       diag: 'Diagnostics',
       settings: 'Settings',
       emptyTitle: 'No apps detected',
-      emptyHint: 'Click "Rescan" and AI Dock will automatically find AI apps and CLI agents on this computer.',
+      emptyHint: 'Click "Rescan" and AI Port will automatically find AI apps and CLI agents on this computer.',
       noMatchTitle: 'No matching entries',
       noMatchHint: 'Try a different keyword.',
       launch: 'Launch',
@@ -222,9 +222,9 @@
       licenseNotice: 'Free for personal use only · Resale, repackaging or rebranding is strictly prohibited',
       donateTitle: 'Support',
       donateBtn: 'Buy the author a coffee',
-      donateText: 'If AI Dock helps you, feel free to buy me a coffee',
+      donateText: 'If AI Port helps you, feel free to buy me a coffee',
       donateMissing: 'QR code coming in a future update',
-      onboardTitle: 'Welcome to AI Dock',
+      onboardTitle: 'Welcome to AI Port',
       onboardP1: 'Automatically finds the AI apps and CLI agents on this computer, with one-click launch and stop.',
       onboardP2: 'Fully local: it only reads installed program info on this machine. Nothing is collected or uploaded.',
       onboardP3: 'Closing the window quits the app; just reopen it anytime.',
