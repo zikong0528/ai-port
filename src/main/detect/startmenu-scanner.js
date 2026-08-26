@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { shell } = require('electron');
-const { realAppData } = require('../util/realpaths');
+const { realAppData, normalizeWinPath } = require('../util/realpaths');
 
 /**
  * 扫描开始菜单快捷方式（.lnk），得到「名称 + 真实 exe 目标」。
@@ -13,7 +13,7 @@ const { realAppData } = require('../util/realpaths');
 function menuDirs() {
   const dirs = [];
   const appData = realAppData();
-  const programData = process.env.ProgramData;
+  const programData = normalizeWinPath(process.env.ProgramData || '');
   if (appData) dirs.push(path.join(appData, 'Microsoft', 'Windows', 'Start Menu', 'Programs'));
   if (programData) dirs.push(path.join(programData, 'Microsoft', 'Windows', 'Start Menu', 'Programs'));
   return dirs;

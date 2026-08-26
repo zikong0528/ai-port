@@ -1,6 +1,6 @@
 'use strict';
 
-const { runCmd, runPowerShellJson } = require('../util/exec');
+const { runCmd, runPowerShellJson, sys } = require('../util/exec');
 
 const REG_KEYS = [
   'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall',
@@ -47,7 +47,7 @@ async function scanRegistryViaReg() {
   for (const key of REG_KEYS) {
     let out = '';
     try {
-      out = await runCmd('chcp 65001 >nul & reg query "' + key + '" /s');
+      out = await runCmd('chcp 65001 >nul & "' + sys('reg.exe') + '" query "' + key + '" /s');
     } catch (e) {
       continue;
     }

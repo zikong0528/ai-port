@@ -26,7 +26,7 @@ app.whenReady().then(async () => {
     await win.webContents.executeJavaScript(
       `(document.querySelector('#onboard-start') || { click() {} }).click()`
     );
-    await new Promise((r) => setTimeout(r, 6000));
+    await new Promise((r) => setTimeout(r, 15000));
     const state = await win.webContents.executeJavaScript(`({
       imgs: [...document.querySelectorAll('.card-icon')].map((i) => i.src.slice(0, 40)),
       phs: [...document.querySelectorAll('.icon-ph')].map((e) => e.textContent),

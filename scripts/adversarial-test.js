@@ -9,6 +9,8 @@ const { app } = require('electron');
 const catalog = require('../src/main/detect/catalog');
 const detect = require('../src/main/detect');
 const { matchSpecFor, normCmdline, cmdlineHasToken, buildHostFilter, matchPids } = require('../src/main/process/manager');
+const { sys, sysPowerShell } = require('../src/main/util/exec');
+const fsAdv = require('fs');
 const { findMainExe } = require('../src/main/detect/localprograms-scanner');
 const { getExeInfoBatch } = require('../src/main/detect/exe-info');
 
@@ -158,14 +160,22 @@ app.whenReady().then(async () => {
     const f3 = buildHostFilter(['aider.exe']);
     check('.exe 命令名原样入过滤', f3.includes("Name='aider.exe'"));
 
-    // ===== 13. 标题守护循环不参与 token 匹配（防误杀其他实例的标题守护）=====
+    // ===== 13. 标题守护不参与 token 匹配（防误杀其他实例的标题守护）=====
     const pingSpec = { kind: 'cli', installPath: '', command: 'ping' };
     const procsFixture = [
-      { pid: 1, name: 'cmd.exe', cmdline: 'for /l %i in (1,1,1000000) do (title ai port - x - 00:00:00 & ping -n 6 127.0.0.1 >nul)' },
-      { pid: 2, name: 'ping.exe', cmdline: 'ping -t 127.0.0.1' },
-      { pid: 3, name: 'conhost.exe', cmdline: '' },
+      { pid: 1, name: 'cmd.exe', cmdline: 'for /l %i in (1,1,1000000) do (title ai port - x - 00:00:00 & ping -n 6 -w 1000 192.0.2.1 >nul)' },
+      { pid: 2, name: 'ping.exe', cmdline: 'ping -n 6 -w 1000 192.0.2.1' },
+      { pid: 3, name: 'ping.exe', cmdline: 'ping -t 127.0.0.1' },
+      { pid: 4, name: 'conhost.exe', cmdline: '' },
     ];
-    eq('标题守护循环被排除, 真实 ping 命中', JSON.stringify(matchPids(pingSpec, procsFixture)), JSON.stringify([2]));
+    eq('标题守护循环与延迟 ping 被排除, 真实 ping 命中', JSON.stringify(matchPids(pingSpec, procsFixture)), JSON.stringify([3]));
+
+    // ===== 14. 系统工具绝对路径（PATH 异常环境韧性）=====
+    check('sys() 解析 cmd.exe 绝对路径', sys('cmd.exe').toLowerCase().endsWith('system32\\cmd.exe'));
+    check('sys() 解析 tasklist.exe 绝对路径', sys('tasklist.exe').toLowerCase().endsWith('system32\\tasklist.exe'));
+    check('sys() 路径无双反斜杠（环境变量已归一化）', sys('cmd.exe').indexOf('\\\\') === -1);
+    check('PowerShell 用 v1.0 真实位置(Win11 24H2 移除 System32 副本)', sysPowerShell().toLowerCase().endsWith('system32\\windowspowershell\\v1.0\\powershell.exe'));
+    check('PowerShell 绝对路径真实存在', fsAdv.existsSync(sysPowerShell()));
 
     console.log('==== 对抗性测试完成: ' + passed + ' 通过, ' + failed + ' 失败 ====');
   } catch (e) {

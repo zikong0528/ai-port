@@ -1,9 +1,28 @@
 'use strict';
 
+const path = require('path');
 const { execFile } = require('child_process');
+const { normalizeWinPath } = require('./realpaths');
 
 // 默认超时：防止卡死的系统命令让扫描/状态永久挂起
 const DEFAULT_TIMEOUT = 30000;
+
+/**
+ * 系统工具绝对路径解析：用户 PATH 被改坏/被精简时，系统命令仍可用。
+ * 环境变量值先归一化（去引号/折叠双反斜杠），否则在异常环境下拼出的路径不可用。
+ * 注意：Windows 11 24H2 起 System32\powershell.exe 被移除，必须用
+ * WindowsPowerShell\v1.0\powershell.exe（各版本 Windows 均存在）。
+ */
+const PS_EXE = 'WindowsPowerShell\\v1.0\\powershell.exe';
+
+function sys(name) {
+  const sr = normalizeWinPath(process.env.SystemRoot || process.env.WINDIR || '');
+  return sr ? path.join(sr, 'System32', name) : name;
+}
+
+function sysPowerShell() {
+  return sys(PS_EXE);
+}
 
 /**
  * 以 execFile 运行命令并捕获 stdout，返回 Promise。
@@ -52,7 +71,7 @@ const PS_UTF8_PREFIX = "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
  */
 async function runPowerShellJson(script) {
   try {
-    const out = await run('powershell.exe', [
+    const out = await run(sysPowerShell(), [
       '-NoProfile',
       '-NonInteractive',
       '-ExecutionPolicy',
@@ -66,4 +85,4 @@ async function runPowerShellJson(script) {
   }
 }
 
-module.exports = { run, runCmd, runPowerShellJson, PS_UTF8_PREFIX };
+module.exports = { run, runCmd, runPowerShellJson, PS_UTF8_PREFIX, sys, sysPowerShell };

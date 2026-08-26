@@ -5,7 +5,7 @@ const path = require('path');
 const { ipcMain, dialog, shell, app, nativeImage } = require('electron');
 const { runScan } = require('./detect');
 const { launch, terminate, terminateInstance, checkInstances, getStatuses } = require('./process/manager');
-const { runCmd, runPowerShellJson } = require('./util/exec');
+const { runCmd, runPowerShellJson, sys } = require('./util/exec');
 const updater = require('./updater');
 
 function registerIpc({ store }) {
@@ -332,7 +332,7 @@ async function checkPowerShell() {
 
 async function checkWt() {
   try {
-    const out = await runCmd('where wt');
+    const out = await runCmd('"' + sys('where.exe') + '" wt');
     return out.trim().length > 0;
   } catch (e) {
     return false;

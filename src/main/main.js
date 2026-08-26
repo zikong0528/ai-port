@@ -25,6 +25,24 @@ if (!gotLock) {
   app.whenReady().then(onReady);
 }
 
+// ===== 环境韧性：未知异常不弹系统错误框，只写日志（打包后 uncaughtException 默认弹框） =====
+function appendCrashLog(err) {
+  try {
+    const dir = path.join(app.getPath('appData'), 'ai-dock');
+    fs.mkdirSync(dir, { recursive: true });
+    const line = new Date().toISOString() + ' ' + String((err && err.stack) || err) + '\n';
+    fs.appendFileSync(path.join(dir, 'crash.log'), line);
+  } catch (e) {
+    /* ignore */
+  }
+}
+process.on('uncaughtException', (err) => {
+  appendCrashLog(err);
+});
+process.on('unhandledRejection', (reason) => {
+  appendCrashLog(reason);
+});
+
 function onReady() {
   // 用户数据目录固定（不随产品名变化），并迁移旧版 "AI Dock" 目录的数据
   const dataDir = path.join(app.getPath('appData'), 'ai-dock');

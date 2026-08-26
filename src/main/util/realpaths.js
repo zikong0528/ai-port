@@ -5,8 +5,21 @@ const path = require('path');
 // MSIX（商店版）会把 APPDATA / LOCALAPPDATA 重定向到包私有目录，
 // 检索必须访问真实用户目录（USERPROFILE 不受重定向影响），
 // 否则商店版会找不到开始菜单快捷方式 / npm 全局包 / %LOCALAPPDATA%\Programs。
+/**
+ * 归一化环境变量里的 Windows 路径：
+ * 去引号/空白、折叠多反斜杠（某些环境 SystemRoot 是 "C:\\WINDOWS"）、正斜杠统一。
+ * 环境变量值不可信，拼路径前必须洗一遍。
+ */
+function normalizeWinPath(s) {
+  return String(s || '')
+    .trim()
+    .replace(/^"|"$/g, '')
+    .replace(/[\\/]+/g, '\\');
+}
+
 function userHome() {
-  return process.env.USERPROFILE || process.env.HOME || '';
+  const h = process.env.USERPROFILE || process.env.HOME || '';
+  return normalizeWinPath(h);
 }
 
 function realAppData() {
@@ -30,4 +43,4 @@ function realPathsEnv(base) {
   });
 }
 
-module.exports = { realAppData, realLocalAppData, realPathsEnv };
+module.exports = { realAppData, realLocalAppData, realPathsEnv, normalizeWinPath };

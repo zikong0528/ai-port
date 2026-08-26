@@ -71,7 +71,8 @@ scripts/              测试与工具脚本（见 §5）
 13. **商店版 MSIX 环境变量重定向**：打包为商店应用后，APPDATA/LOCALAPPDATA 会被重定向到包私有目录（`LocalCache`），直接读这些环境变量会找不到开始菜单快捷方式 / npm 全局包 / `%LOCALAPPDATA%\Programs`。所有检索必须走 `util/realpaths.js`（用 USERPROFILE 派生真实路径）；给子进程（`npm root -g`）注入真实环境变量。
 14. **防欺骗佐证规则**：GUI 条目仅靠「名字」命中特征库时，必须由 exe 文件名或底层元数据（公司名/产品名/原始文件名）佐证，否则降级为「疑似冒名」候选（防乱名 + 无元数据假 exe 冒充）；PWA 浏览器宿主（msedge/chrome 等）豁免。开始菜单 .lnk 自带的参数与工作目录必须保留（否则 PWA 启动的不是原应用）；PWA 条目的状态/终止按命令行参数匹配（WMI 过滤需包含浏览器宿主名）。
 15. **对抗性测试**：`scripts/adversarial-test.js` 用断言覆盖上述欺骗场景（改名/乱名/冒名/空文件夹/占位脚本/PWA/自身排除），改动检测逻辑后必跑。
-16. **防欺骗三连修（体检发现的核心损伤）**：① exe-info 的 PowerShell 脚本嵌入路径时不能用 JSON.stringify（`\` 被转义成 `\\`，`-LiteralPath` 按字面解析永远找不到文件 → 底层元数据防改名/防冒名**一直形同虚设**），必须用 PS 单引号字面量；② 公司名匹配必须由产品名佐证，否则宽厂商（Microsoft/ByteDance/Google）会把几十个非 AI 产品全部命中（如所有微软系统组件都变成 "Microsoft Copilot"）；③ 裸命令 CLI（手动添加、无路径，如 ping/aider）要在 WMI 过滤器中补 `.exe` 变体，否则状态/终止永远找不到；标题守护循环（cmdline 含 ping 延迟）不参与 token 匹配，防止名为 ping 的条目误杀其他实例的标题守护。
+16. **防欺骗三连修（体检发现的核心损伤）**：① exe-info 的 PowerShell 脚本嵌入路径时不能用 JSON.stringify（`\` 被转义成 `\\`，`-LiteralPath` 按字面解析永远找不到文件 → 底层元数据防改名/防冒名**一直形同虚设**），必须用 PS 单引号字面量；② 公司名匹配必须由产品名佐证，否则宽厂商（Microsoft/ByteDance/Google）会把几十个非 AI 产品全部命中（如所有微软系统组件都变成 "Microsoft Copilot"）；③ 裸命令 CLI（手动添加、无路径，如 ping/aider）要在 WMI 过滤器中补 `.exe` 变体，否则状态/终止永远找不到；标题守护循环不参与 token 匹配（延迟改用保留地址 192.0.2.1 签名，防止名为 ping 的条目误杀标题守护）。
+17. **环境韧性**：① 所有系统工具（tasklist/reg/where/cmd/taskkill/PowerShell）走 `%SystemRoot%\System32` 绝对路径（用户 PATH 被改坏也能工作），PowerShell 必须用 `WindowsPowerShell\v1.0\powershell.exe`（Win11 24H2 移除了 System32 副本）；② 环境变量路径一律先归一化（去引号/空白、折叠双反斜杠、正斜杠统一）；③ 全局 uncaughtException/unhandledRejection 只写 crash.log 不弹系统错误框；④ 测试套件统一走 `scripts/qa-suite.ps1`（90 秒超时护栏 + 泄漏预清理，按 bat 内容识别测试残留、绝不误伤用户实例）。
 
 ## 5. 构建与测试
 

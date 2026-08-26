@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
-const { run, runPowerShellJson } = require('../util/exec');
+const { run, runPowerShellJson, sys } = require('../util/exec');
 const { BROWSER_HOSTS } = require('../detect/catalog');
 
 // 进程列表缓存，避免状态轮询频繁调用 WMI
@@ -88,7 +88,7 @@ function buildHostFilter(cliNames) {
 async function tasklistProcesses() {
   let out = '';
   try {
-    out = await run('tasklist', ['/FO', 'CSV', '/NH']);
+    out = await run(sys('tasklist.exe'), ['/FO', 'CSV', '/NH']);
   } catch (e) {
     return [];
   }
@@ -174,9 +174,10 @@ function matchPids(spec, procs) {
     // 跳过共享宿主进程，避免误关用户所有终端窗口
     if (EXCLUDED_NAMES.has(p.name)) continue;
 
-    // 跳过标题守护循环：其 cmdline 里的 ping 延迟不应参与 token 匹配
-    // （否则名为 ping 的 CLI 条目会误命中所有实例的标题守护进程）
-    if (p.cmdline && p.cmdline.indexOf('(1,1,1000000)') >= 0) continue;
+    // 跳过标题守护：① 循环进程本身（其 cmdline 含 ping 延迟）不参与 token 匹配，
+    // ② 其瞬时派生的 ping 子进程按 192.0.2.1（TEST-NET-1 保留地址）签名排除。
+    // 否则名为 ping 的 CLI 条目会误命中所有实例的标题守护（状态永远 running）。
+    if (p.cmdline && (p.cmdline.indexOf('(1,1,1000000)') >= 0 || p.cmdline.indexOf('192.0.2.1') >= 0)) continue;
 
     if (spec.kind === 'image') {
       if (p.name === spec.value || p.name === spec.value.replace(/\.exe$/, '') || p.name + '.exe' === spec.value) {
@@ -277,7 +278,7 @@ async function launchCli(entry) {
       '@echo off\r\n' +
       'start "" /b cmd /q /c "for /l %%i in (1,1,1000000) do (title ' +
       title +
-      ' & ping -n 6 127.0.0.1 >nul)"\r\n' +
+      ' & ping -n 6 -w 1000 192.0.2.1 >nul)"\r\n' +
       baseForBat +
       '\r\n';
     fs.writeFileSync(batPath, bat, 'utf8');
@@ -291,7 +292,7 @@ async function launchCli(entry) {
   if (entry.workdir) startArgs.push('/D', entry.workdir);
   startArgs.push('cmd', '/k', inner);
 
-  const child = await spawnDetached('cmd.exe', startArgs, {});
+  const child = await spawnDetached(sys('cmd.exe'), startArgs, {});
   return { pid: child.pid, cmdline: inner, marker, kind: 'cli', startedAt: startedAt.toISOString() };
 }
 
@@ -370,7 +371,7 @@ async function terminate(entry) {
   const spec = matchSpecFor(entry);
   const pids = matchPids(spec, procs);
   for (const pid of pids) {
-    await run('taskkill', ['/PID', String(pid), '/T', '/F']).catch(() => {});
+    await run(sys('taskkill.exe'), ['/PID', String(pid), '/T', '/F']).catch(() => {});
   }
   return pids;
 }
@@ -437,7 +438,7 @@ async function terminateInstance(inst) {
     pids = [inst.pid];
   }
   for (const pid of pids) {
-    await run('taskkill', ['/PID', String(pid), '/T', '/F']).catch(() => {});
+    await run(sys('taskkill.exe'), ['/PID', String(pid), '/T', '/F']).catch(() => {});
   }
   return pids;
 }

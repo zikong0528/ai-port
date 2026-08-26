@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { normalizeWinPath } = require('../util/realpaths');
 
 // 扩展名优先级：同名时优先真实可执行扩展（npm bin 目录里常有
 // claude / claude.cmd / claude.ps1 三个同名文件，必须选 .cmd 才能在 cmd 里运行）
@@ -13,7 +14,11 @@ const EXT_PRIORITY = { '.exe': 0, '.com': 1, '.cmd': 2, '.bat': 3, '.ps1': 4, ''
  */
 function scanPath() {
   const pathVar = process.env.PATH || '';
-  const dirs = pathVar.split(';').filter(Boolean);
+  // 去掉引号/空白、折叠双反斜杠（环境变量值不可信，readdirSync 不认脏路径）
+  const dirs = pathVar
+    .split(';')
+    .map((d) => normalizeWinPath(d))
+    .filter(Boolean);
   const map = new Map(); // base -> { file, priority }
 
   for (const dir of dirs) {
