@@ -23,3 +23,31 @@ AI Port 不接入任何第三方统计、广告或跟踪服务。内置的各 AI
 
 如有疑问或建议，请通过 GitHub Issues 联系我们：
 https://github.com/zikong0528/ai-port/issues
+
+---
+
+# AI Port Privacy Policy (English)
+
+AI Port respects and protects your privacy. This policy describes how AI Port handles data.
+
+## What we collect
+
+**Nothing.** AI Port runs entirely on your machine:
+
+- Scanning only reads information about locally installed programs (names, paths, icons) for display purposes;
+- All data (app list, settings, notes, instance records) is stored only on your local computer;
+- AI Port contains no telemetry, analytics, or data reporting of any kind;
+- The only network request is "check for updates" (installer build only; it queries GitHub for a version number and carries no personal information).
+
+## How data is stored
+
+Data is stored as JSON files in your user directory (`%APPDATA%\ai-dock`). You can delete this folder at any time to remove all data.
+
+## Third parties
+
+AI Port integrates no third-party analytics, advertising, or tracking services. The bundled AI icons are used for identification and display only; all rights belong to their respective owners.
+
+## Contact
+
+For questions or suggestions, please reach us via GitHub Issues:
+https://github.com/zikong0528/ai-port/issues
