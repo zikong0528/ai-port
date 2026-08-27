@@ -157,6 +157,7 @@ app.whenReady().then(async () => {
     check('裸命令 ping → 过滤含 ping.exe', f1.includes("Name='ping.exe'"));
     const f2 = buildHostFilter(['claude.cmd']);
     check('.cmd 命令名原样入过滤', f2.includes("Name='claude.cmd'"));
+    check('.cmd shim 同时查同名 .exe 本体', f2.includes("Name='claude.exe'"));
     const f3 = buildHostFilter(['aider.exe']);
     check('.exe 命令名原样入过滤', f3.includes("Name='aider.exe'"));
 

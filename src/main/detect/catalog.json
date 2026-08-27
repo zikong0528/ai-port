@@ -21,6 +21,7 @@
       "exeNames": [],
       "defaultCommand": "claude",
       "defaultArgs": [],
+      "env": { "DISABLE_AUTOUPDATER": "1" },
       "homepage": "https://claude.com/code"
     },
     {

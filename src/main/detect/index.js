@@ -64,6 +64,7 @@ function buildFromCatalog(cat, overrides = {}) {
     confirmed: true,
     version: '',
     homepage: cat.homepage || '',
+    env: Object.assign({}, cat.env),
   };
   return Object.assign(entry, overrides);
 }

@@ -67,12 +67,14 @@ function buildHostFilter(cliNames) {
   for (const n of cliNames || []) {
     const b = String(n || '').toLowerCase();
     if (!b) continue;
-    if (b.endsWith('.exe') || b.endsWith('.cmd') || b.endsWith('.bat')) {
-      set.add(b);
-    } else {
+    set.add(b);
+    if (b.endsWith('.cmd') || b.endsWith('.bat')) {
+      // .cmd/.bat 只是 shim，真正拉起的是同名 .exe（claude.cmd → claude.exe）：
+      // 只查 shim 名会永远查不到本体进程，状态探测会漏。
+      set.add(b.replace(/\.(cmd|bat)$/, '.exe'));
+    } else if (!b.endsWith('.exe')) {
       // 裸命令（手动添加的 CLI，如 ping / aider）：实际进程是 <命令>.exe，
       // 两个都加进过滤（WMI Name 是镜像名，裸名不会误命中）。
-      set.add(b);
       set.add(b + '.exe');
     }
   }
@@ -292,7 +294,9 @@ async function launchCli(entry) {
   if (entry.workdir) startArgs.push('/D', entry.workdir);
   startArgs.push('cmd', '/k', inner);
 
-  const child = await spawnDetached(sys('cmd.exe'), startArgs, {});
+  const child = await spawnDetached(sys('cmd.exe'), startArgs, {
+    env: Object.assign({}, process.env, entry.env || {}),
+  });
   return { pid: child.pid, cmdline: inner, marker, kind: 'cli', startedAt: startedAt.toISOString() };
 }
 
