@@ -127,7 +127,7 @@ const SOURCE_LABELS = {
 async function runScan() {
   const detected = [];
   const keys = new Set();
-  const stats = { startmenu: 0, registry: 0, localprograms: 0, appx: 0, npm: 0, path: 0 };
+  const stats = { startmenu: 0, registry: 0, localprograms: 0, appx: 0, npm: 0, path: 0, brokenNpm: [] };
   const add = (entry, source) => {
     const k = entryKey(entry);
     if (keys.has(k)) return false;
@@ -293,7 +293,11 @@ async function runScan() {
     if (cat && cat.launchType === 'cli') {
       const cmd = (cat.pathExecutables && cat.pathExecutables[0]) || cat.defaultCommand || pkg.name;
       const commandPath = resolveCommand(cmd, pathMap, pkg.npmRoot, pkg.installPath);
-      if (!commandPath) continue;
+      if (!commandPath) {
+        // 包已安装但命令不可用（shim 丢失 / 本体损坏，如 claude 自更新失败）——记录供诊断面板提示
+        stats.brokenNpm.push({ name: cat.name, package: pkg.name, command: cmd });
+        continue;
+      }
       add(
         buildFromCatalog(cat, {
           command: cmd,
@@ -308,7 +312,10 @@ async function runScan() {
     } else if (!cat && looksLikeAI(pkg.name + ' ' + pkg.description)) {
       const cmd = (pkg.bin && pkg.bin[0]) || prettyName(pkg.name);
       const commandPath = resolveCommand(cmd, pathMap, pkg.npmRoot, pkg.installPath);
-      if (!commandPath) continue;
+      if (!commandPath) {
+        stats.brokenNpm.push({ name: prettyName(pkg.name), package: pkg.name, command: cmd });
+        continue;
+      }
       add(
         buildCandidate({
           name: prettyName(pkg.name),

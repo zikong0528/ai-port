@@ -5,8 +5,10 @@ const path = require('path');
 const { normalizeWinPath } = require('../util/realpaths');
 
 // 扩展名优先级：同名时优先真实可执行扩展（npm bin 目录里常有
-// claude / claude.cmd / claude.ps1 三个同名文件，必须选 .cmd 才能在 cmd 里运行）
-const EXT_PRIORITY = { '.exe': 0, '.com': 1, '.cmd': 2, '.bat': 3, '.ps1': 4, '': 5 };
+// claude / claude.cmd / claude.ps1 三个同名文件，必须选 .cmd 才能在 cmd 里运行）。
+// 注意：不含 .ps1 —— 启动走 cmd 机制，.ps1 无法直接执行，
+// 只有 .ps1 存活属于半损坏状态，应视为命令不可用（诊断面板会提示）。
+const EXT_PRIORITY = { '.exe': 0, '.com': 1, '.cmd': 2, '.bat': 3, '': 4 };
 
 /**
  * 扫描 PATH 中所有目录，返回 Map<小写可执行名, 完整路径>。

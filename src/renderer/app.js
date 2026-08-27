@@ -647,11 +647,21 @@ function renderDiagnostics(d) {
     )
     .join('');
 
+  const broken = Array.isArray(d.stats.brokenNpm) && d.stats.brokenNpm.length
+    ? d.stats.brokenNpm
+        .map(
+          (b) =>
+            `<div class="diag-row"><span class="diag-label">${escapeHtml(b.name || b.package)}</span><span class="diag-value bad">${t('diagBrokenHint')}</span></div>`
+        )
+        .join('')
+    : '';
+
   return `
     <div class="diag-section">${t('envSection')}</div>
     ${env}
     <div class="diag-section">${t('sourceSection')}</div>
     ${sources}
+    ${broken ? '<div class="diag-section">' + t('diagBrokenSection') + '</div>' + broken : ''}
     <div class="diag-section">${t('summarySection')}</div>
     <div class="diag-row"><span class="diag-label">${t('detectedCount')}</span><span class="diag-value">${d.detected}</span></div>
     <div class="diag-row"><span class="diag-label">${t('listedCount')}</span><span class="diag-value">${d.listed}</span></div>
