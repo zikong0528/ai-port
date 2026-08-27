@@ -1,7 +1,7 @@
 {
   "name": "ai-dock",
   "productName": "AI Port",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "AI Port —— 自动检索本机 AI 应用与 CLI agent，一键启动 / 一键终止的桌面启动器",
   "main": "src/main/main.js",
   "author": "AI Port",
