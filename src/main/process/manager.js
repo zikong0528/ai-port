@@ -270,28 +270,37 @@ async function launchCli(entry) {
   // （用 ping 做延迟不碰 stdin，不会抢 claude 的键盘输入）
   // 注意：写进 bat 的内容要把 % 翻倍（%%），否则 cmd 会按变量展开，命令会坏
   const baseForBat = String(base).replace(/%/g, '%%');
+  // 命令实际工作目录：优先用户配置，否则沿用应用当前目录（保持既有行为）
+  const cwdForBat = String(entry.workdir || process.cwd() || '').replace(/"/g, '');
   let inner;
+  let tmpDir = '';
   try {
-    const tmpDir = path.join(os.tmpdir(), 'aidock-instances');
+    tmpDir = path.join(os.tmpdir(), 'aidock-instances');
     fs.mkdirSync(tmpDir, { recursive: true });
     cleanupOldBats(tmpDir);
-    const batPath = path.join(tmpDir, marker + '.bat');
+    const batName = marker + '.bat';
+    const batPath = path.join(tmpDir, batName);
     const bat =
       '@echo off\r\n' +
       'start "" /b cmd /q /c "for /l %%i in (1,1,1000000) do (title ' +
       title +
       ' & ping -n 6 -w 1000 192.0.2.1 >nul)"\r\n' +
+      (cwdForBat ? 'cd /d "' + cwdForBat + '"\r\n' : '') +
       baseForBat +
       '\r\n';
     fs.writeFileSync(batPath, bat, 'utf8');
-    inner = 'call ' + batPath + ' & rem ' + marker;
+    // 关键：只引用「文件名」而非完整路径，配合 start /D 把工作目录切到临时目录，
+    // 彻底避免「临时目录路径带空格/中文」时 call 被截断报「找不到路径」
+    inner = 'call ' + batName + ' & rem ' + marker;
   } catch (e) {
     // 临时目录不可用时退回无标题守护的直启方式
+    tmpDir = '';
     inner = base + ' & rem ' + marker;
   }
 
   const startArgs = ['/c', 'start', title];
-  if (entry.workdir) startArgs.push('/D', entry.workdir);
+  if (tmpDir) startArgs.push('/D', tmpDir);
+  else if (entry.workdir) startArgs.push('/D', entry.workdir);
   startArgs.push('cmd', '/k', inner);
 
   const child = await spawnDetached(sys('cmd.exe'), startArgs, {
