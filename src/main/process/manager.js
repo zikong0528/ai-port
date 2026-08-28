@@ -282,6 +282,9 @@ async function launchCli(entry) {
     const batPath = path.join(tmpDir, batName);
     const bat =
       '@echo off\r\n' +
+      // 关键：切换到 UTF-8 码页。bat 用 UTF-8 写入，但中文系统 cmd 默认按 GBK 读取，
+      // 中文用户名/路径会被读成乱码 → "系统找不到指定的路径"。chcp 65001 后正确按 UTF-8 读。
+      'chcp 65001 >nul\r\n' +
       'start "" /b cmd /q /c "for /l %%i in (1,1,1000000) do (title ' +
       title +
       ' & ping -n 6 -w 1000 192.0.2.1 >nul)"\r\n' +
