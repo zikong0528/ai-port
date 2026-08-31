@@ -74,6 +74,7 @@ scripts/              测试与工具脚本（见 §5）
 16. **防欺骗三连修（体检发现的核心损伤）**：① exe-info 的 PowerShell 脚本嵌入路径时不能用 JSON.stringify（`\` 被转义成 `\\`，`-LiteralPath` 按字面解析永远找不到文件 → 底层元数据防改名/防冒名**一直形同虚设**），必须用 PS 单引号字面量；② 公司名匹配必须由产品名佐证，否则宽厂商（Microsoft/ByteDance/Google）会把几十个非 AI 产品全部命中（如所有微软系统组件都变成 "Microsoft Copilot"）；③ 裸命令 CLI（手动添加、无路径，如 ping/aider）要在 WMI 过滤器中补 `.exe` 变体，否则状态/终止永远找不到；标题守护循环不参与 token 匹配（延迟改用保留地址 192.0.2.1 签名，防止名为 ping 的条目误杀标题守护）。
 17. **环境韧性**：① 所有系统工具（tasklist/reg/where/cmd/taskkill/PowerShell）走 `%SystemRoot%\System32` 绝对路径（用户 PATH 被改坏也能工作），PowerShell 必须用 `WindowsPowerShell\v1.0\powershell.exe`（Win11 24H2 移除了 System32 副本）；② 环境变量路径一律先归一化（去引号/空白、折叠双反斜杠、正斜杠统一）；③ 全局 uncaughtException/unhandledRejection 只写 crash.log 不弹系统错误框；④ 测试套件统一走 `scripts/qa-suite.ps1`（90 秒超时护栏 + 泄漏预清理，按 bat 内容识别测试残留、绝不误伤用户实例）。
 18. **claude 自更新自毁防御**：claude 自更新时下载中断会把安装搞成半残（全局 shim 删除 + `bin\claude.exe` 变成 500B 占位脚本），已三次自毁（2.1.245→246、246→247，后者正是被 AI Port 启动触发的）。① 通过 catalog `env` 给 claude-code 注入 `DISABLE_AUTOUPDATER=1`（AI Port 启动时不触发自更新，终端自行使用不受影响）；② WMI 过滤对 `.cmd/.bat` shim 补同名 `.exe`（claude.cmd → claude.exe），否则原生本体进程永远查不到、状态探测漏报「正在运行」；③ 扫描统计新增 `brokenNpm`（包已安装但命令不可用的 npm CLI），诊断面板展示原因，避免用户误以为漏检；PATH 扫描不再收录 `.ps1`（cmd 无法直接执行，仅 .ps1 存活视为损坏）。修复配方见决策 11。
+19. **商店磁贴图标**：electron-builder 给 appx 生成的磁贴是默认占位图（微软认证 10.1.1.11 驳回），且把含空格 exe 名存成 URL 编码（`AI%20Port.exe`）。每次 `npm run dist:store` 后必须跑 `scripts/patch-appx-tiles.ps1`：① 从 `resources/icon.png` 生成 6 个尺寸磁贴；② 解包时把 URL 编码文件名解码回空格；③ manifest 补 `Square71x71Logo`/`Square310x310Logo`（都挂在 `uap:DefaultTile`）；④ 用 makeappx 重打包。
 
 ## 5. 构建与测试
 
