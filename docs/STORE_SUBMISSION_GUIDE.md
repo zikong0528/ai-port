@@ -109,4 +109,4 @@
 | 包标识不匹配 | 把「产品标识」页的包标识名发给开发者，改 identityName 重新打包 |
 | 要求商店徽标图片 | 找开发者用 `resources/icon.png` 生成全套尺寸 |
 | 认证被驳回 | 把认证报告（邮箱或仪表盘里的说明）发给开发者 |
-| 想更新商店版 | 改 `package.json` 版本号 → `npm run dist:store` → 在应用页「更新 → 程序包」上传新包 |
+| 想更新商店版 | 改 `package.json` 版本号 → `npm run dist:store` → **跑 `scripts/patch-appx-tiles.ps1`（补磁贴图标，否则认证 10.1.1.11 驳回）** → 在应用页「更新 → 程序包」上传新包 |
